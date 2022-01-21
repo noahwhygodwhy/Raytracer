@@ -10,7 +10,7 @@ unsigned int makeShader(string filename, uint type) {
     long unsigned int length;
     ifstream stream(filename, ios::in | ios::ate | ios::binary);
     //stream.seekg(0, ios::end);
-    length = stream.tellg();
+    length = long unsigned int(stream.tellg());
     stream.seekg(0, ios::beg);
     char* shaderSource = new char[length + 1];
     shaderSource[length] = '\0';
