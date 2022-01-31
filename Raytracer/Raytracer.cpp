@@ -2,7 +2,9 @@
 #include <vector>
 #include <fstream>
 #include <mutex>
-//#include <thread>
+#include <execution>
+#include <ppl.h>
+#include <thread>
 //#include <queue>
 //#include <execution>
 
@@ -17,8 +19,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "glm/gtx/string_cast.hpp"
-
+#include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/norm.hpp>
 /*#define STB_IMAGE_WRITE_IMPLEMENTATION  
 #include "stb_image_write.h"*/
 
@@ -26,20 +28,23 @@
 
 #include "Shader.hpp"
 #include "Model.hpp"
-#include "WorkerPool.hpp"
+//#include "WorkerPool.hpp"
 #include "Triangle.hpp"
+#include "Ray.hpp"
+
 
 using namespace std;
 using namespace glm;
 
-uint32_t frameX = 300;
-uint32_t frameY = 150;
 
-uint32_t scaleFactor = 10;
+uint32_t frameX = 500;
+uint32_t frameY = 500;
+
 fvec2 pixelOffset = vec2(0.5 / float(frameX), 0.5 / float(frameY));
 
-uint64_t screenX = scaleFactor*frameX;
-uint64_t screenY = scaleFactor * frameY;
+float screenRatio = float(frameX) / float(frameY);
+uint64_t screenY = 1000;// scaleFactor* frameY;
+uint64_t screenX = uint64_t(1000.0f* screenRatio);// scaleFactor* frameX;
 
 const float near = 0.1f;
 const float far = 50.0f;
@@ -50,9 +55,8 @@ double deltaTime = 0.0f;	// Time between current frame and last frame
 double lastFrame = 0.0f; // Time of last frame
 
 
-//TODO: do i need to transform the normals as well..?
 //Applies the projection and view matrix to the point
-Vertex transformIt(const mat4& projection, const mat4& view, const mat4& model, Vertex v) {
+Vertex transformIt(const mat4& view, const mat4& model, Vertex v) {
 	//mat4 mvp = projection * view * model; //for rasterization
 	mat4 mvp = view * model; //for raytracing
 	mat4 normalMat = glm::inverse(glm::transpose(model));
@@ -70,7 +74,7 @@ void processInput(GLFWwindow* window)
 }
 
 vec3* frameBuffer;
-float* depthBuffer;
+//float* depthBuffer;
 
 void frameBufferSizeCallback(GLFWwindow* window, uint64_t width, uint64_t height) {
 	glViewport(0, 0, GLsizei(width), GLsizei(height));
@@ -79,7 +83,7 @@ void frameBufferSizeCallback(GLFWwindow* window, uint64_t width, uint64_t height
 void clearBuffers() {
 	for (uint64_t i = 0; i < frameX * frameY; i++) {
 		frameBuffer[i] = clearColor;
-		depthBuffer[i] = INFINITY;
+		//depthBuffer[i] = INFINITY;
 	}
 }
 
@@ -91,10 +95,10 @@ bool frontFacing(vec3 a, vec3 b, vec3 c) {
 //mutex perFrameMutex;
 //condition_variable perFrameCondition;
 
-void drawMesh(Mesh& mesh, const mat4& projection, const mat4& view, const mat4& parentTx) {
+/*void drawMesh(Mesh& mesh, const mat4& projection, const mat4& view, const mat4& parentTx) {
 	vector<Vertex> transformedVertices(mesh.indices.size());
 	for (uint64_t i = 0; i < mesh.indices.size(); i++) {
-		transformedVertices[i] = transformIt(projection, view, mesh.getModelMat(), mesh.vertices[mesh.indices[i]]);
+		transformedVertices[i] = transformIt(view, mesh.getModelMat(), mesh.vertices[mesh.indices[i]]);
 	}
 
 
@@ -138,12 +142,12 @@ void drawMesh(Mesh& mesh, const mat4& projection, const mat4& view, const mat4& 
 			}
 		}
 	}
-}
+}*/
 
-void doTriangles(Mesh& mesh, const mat4& projection, const mat4& view, vector<Triangle>& triangles) {
+void doTriangles(Mesh& mesh, const mat4& view, vector<Triangle>& triangles) {
 	vector<Vertex> transformedVertices(mesh.indices.size());
 	for (uint64_t i = 0; i < mesh.indices.size(); i++) {
-		transformedVertices[i] = transformIt(projection, view, mesh.getModelMat(), mesh.vertices[mesh.indices[i]]);
+		transformedVertices[i] = transformIt(view, mesh.getModelMat(), mesh.vertices[mesh.indices[i]]);
 	}
 
 	//construct triangles out of vertices
@@ -162,9 +166,19 @@ void doTriangles(Mesh& mesh, const mat4& projection, const mat4& view, vector<Tr
 	}
 }
 
+
+
+float angle(vec3 a, vec3 b) {
+	return glm::acos(glm::dot(a, b));
+}
+
+
+fvec2 frameToNDC(ivec2 fc) {
+	return (fvec2(floatDiv(fc.x, frameX), floatDiv(fc.y, frameY)) * 2.0f) - fvec2(1.0f);
+}
+
 int main()
 {
-
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -188,28 +202,19 @@ int main()
 	frameBufferSizeCallback(window, screenX, screenY);
 
 	glEnable(GL_FRAMEBUFFER_SRGB);
-
-
 	unsigned int VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
 	glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
-
-
-
-
 
 	Shader shader("vert.glsl", "frag.glsl");
 	shader.use();
 
-	//vector<Vertex> vertices = getIcosahedron();
-
 	//make framebuffers
 	frameBuffer = new vec3[frameX * frameY]();
-	depthBuffer = new float[frameX * frameY]();
+	//depthBuffer = new float[frameX * frameY]();
 
 	//initialize textured that the framebuffer gets written to display it on a triangle
 	unsigned int frameTexture;
@@ -220,10 +225,8 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-
 	//Model backpack("brick");
 	Model backpack = Model("backpack");
-
 
 	int frameCounter = -1;
 	float frameTimes[30](0);
@@ -253,12 +256,12 @@ int main()
 		}
 		frameTimes[frameCounter % 30] = 1.0f/float(deltaTime);
 
-
+		printf("currentFrame: %f\n", currentFrame);
 		//projection/view matrix 
-		//printf("doing matrcies\n");
-		float ratio = float(frameX) / float(frameY);
-		mat4 projection = glm::perspective(radians(70.0f), ratio, near, far);
+		//printf("doing matrcies\n");;
+		//mat4 projection = glm::perspective(radians(70.0f), ratio, near, far);
 		vec3 eye = vec3(sin(currentFrame)*5.0f, 0.0f, cos(currentFrame)*5.0f);
+		//vec3 eye = vec3(0.0f, 0.0f, currentFrame);// vec3(sin(currentFrame) * 5.0f, 0.0f, cos(currentFrame) * 5.0f);
 
 		mat4 view = glm::lookAt(eye, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
@@ -269,20 +272,78 @@ int main()
 
 		//printf("drawing some mesh\n");
 		for (Mesh& m : backpack.children) {
-			doTriangles(m, projection, view, triangles);
+			doTriangles(m, view, triangles);
 			//drawMesh(m, projection, view, m.transform);
 		}
+		printf("did triangles\n");
 
-
+		float ratio = float(frameX) / float(frameY);
 		float fovY = radians(70.0f);
 		float fovX = fovY * ratio;
 		vec3 intoScreen(0.0f, 0.0f, -1.0f);
 
-		for (uint32_t x = 0; x < frameX; x++) {
-			for (uint32_t y = 0; y < frameX; y++) {
 
+		/*triangles = vector<Triangle>();
+		float z = -50.0f;
+		Vertex a = transformIt(view, mat4(1.0f), Vertex(vec3(2.0f, 0.0f, 0.0f), vec2(1.0f, 0.0f)));
+		Vertex b = transformIt(view, mat4(1.0f), Vertex(vec3(0.0f, 0.0f, 2.0f), vec2(0.0f, 0.0f)));
+		Vertex c = transformIt(view, mat4(1.0f), Vertex(vec3(0.0f, 2.0f, 0.0f), vec2(0.0f, 1.0f)));
+		Triangle t = Triangle(a, c, b, NULL);
+		triangles.push_back(t);*/
+
+
+		//printf("triangles transformed, starting drawing\n");
+
+		constexpr float mypi = glm::pi<float>();
+
+		/*printf("triangle:\n\t%s\n\t%s\n\t%s\nbounded by:\n\t%s\n\t%s\n\n",
+			glm::to_string(t[0].position).c_str(),
+			glm::to_string(t[1].position).c_str(),
+			glm::to_string(t[2].position).c_str(),
+			glm::to_string(t.minBounding).c_str(),
+			glm::to_string(t.maxBounding).c_str()
+		);*/
+
+
+		//printf("eye: %s\n", glm::to_string(eye).c_str());
+
+		vec3 bary;
+		vec3 boxCoord;
+		vec3 hitPoint;
+
+
+
+
+		for (uint64_t i = 0; i < frameX * frameY; i++) {
+			{
+				uint32_t x = i % frameX;
+				uint32_t y = i / frameX;
+		//for (uint32_t x = 0; x < frameX; x++) {
+			//for (uint32_t y = 0; y < frameY; y++) {
+
+				if (y == 0) { printf("on pixel %i, %i\n", x, y); }
+				fvec2 clipCoords = frameToNDC(ivec2(x, y));
+				vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));
+				Ray ray(vec3(0), rayVector);
+				float hitDepth = INFINITY;
+				for (const Triangle& tri: triangles) {
+					if (rayHit(ray, tri.minBounding, tri.maxBounding, boxCoord)) {
+						if (rayHit(ray, tri, bary, hitPoint)) {
+							float distance = glm::length2(boxCoord);
+							if (distance < hitDepth) {
+								vec2 fragUV = bary.x * tri[0].texCoords + bary.y * tri[1].texCoords + bary.z * tri[2].texCoords;
+								vec3 fragColor = tri.mesh->diffuse.sample(fragUV);
+								frameBuffer[x + (y * frameX)] = fragColor;
+								hitDepth = distance;
+							}
+						}
+
+					}
+				}
 			}
 		}
+
+		//printf("drew all triangles supposedly\n");
 		//printf("drew all mesh\n");
 		//printf("has %i triangles\n", triangles.size());
 
@@ -313,6 +374,7 @@ int main()
 		glfwSwapBuffers(window);
 		processInput(window);
 		glfwPollEvents();
+		cin.get();
 
 	}
 	//pool.stop();

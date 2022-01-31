@@ -158,6 +158,7 @@
   <ItemGroup>
     <ClInclude Include="glad.h" />
     <ClInclude Include="Mesh.hpp" />
+    <ClInclude Include="Ray.hpp" />
     <ClInclude Include="Shader.hpp" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_write.h" />

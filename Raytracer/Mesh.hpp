@@ -1,4 +1,3 @@
-#pragma once
 #ifndef MESH_H
 #define MESH_H
 
@@ -18,6 +17,13 @@ struct Vertex {
     vec3 tangent;
     vec3 bitangent;
     vec2 texCoords;
+    Vertex(vec3 a) {
+        position = a;
+    }
+    Vertex(vec3 a, vec2 uv) {
+        position = a;
+        texCoords = uv;
+    }
     Vertex() {
         position = normal = tangent = bitangent = vec3(1.0f);
         texCoords = vec2(1.0f);
