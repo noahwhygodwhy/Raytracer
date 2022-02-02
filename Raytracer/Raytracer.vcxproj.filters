@@ -68,5 +68,8 @@
     <ClInclude Include="Ray.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="KDNode.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

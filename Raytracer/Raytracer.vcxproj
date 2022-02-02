@@ -157,6 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="glad.h" />
+    <ClInclude Include="KDNode.hpp" />
     <ClInclude Include="Mesh.hpp" />
     <ClInclude Include="Ray.hpp" />
     <ClInclude Include="Shader.hpp" />

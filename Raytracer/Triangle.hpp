@@ -27,15 +27,16 @@ class Triangle {
 
 	//uvec2 zLimits;
 	bool onscreen = true;
-	fvec3 U;
-	fvec3 V; 
+	vec3 U;
+	vec3 V; 
 	//float planeD;
 
 public:
-	fvec3 maxBounding;
-	fvec3 minBounding;
-	fvec3 E1;
-	fvec3 E2;
+	vec3 maxBounding;
+	vec3 minBounding;
+	vec3 middleBounding;
+	vec3 E1;
+	vec3 E2;
 	vec3 normal;
 	Mesh* mesh;
 	Triangle() {}
@@ -48,6 +49,7 @@ public:
 
 		this->maxBounding = glm::max(a.position, glm::max(b.position, c.position));
 		this->minBounding = glm::min(a.position, glm::min(b.position, c.position));
+		this->middleBounding = (this->maxBounding + this->minBounding) / 2.0f;
 
 		U = b.position - a.position;
 		V = c.position - a.position;
@@ -83,11 +85,12 @@ enum Side {
 };
 #define DIMS 3
 //based on the fast ray-box intersection chapter by andrew woo from Graphics Gems
-bool rayHit(const Ray& ray, const vec3& minBounding, const vec3& maxBounding, vec3& coord) {
+//calculates hits between a ray and a triangle's bounding box
+bool rayHit(const Ray& ray, const vec3& minBounding, const vec3& maxBounding) {
 
 	Side sides[DIMS]; //quadrants
-	float planes[DIMS]; //candiatePlane
-	float maxT[DIMS];
+	double planes[DIMS]; //candiatePlane
+	double maxT[DIMS];
 	bool inside = true;
 
 	for (uint32_t i = 0; i < DIMS; i++) {
@@ -129,6 +132,7 @@ bool rayHit(const Ray& ray, const vec3& minBounding, const vec3& maxBounding, ve
 	if (maxT[intersectionDim] < 0.0f) { 
 		return (false); 
 	}
+	vec3 coord;
 
 	for (uint32_t i = 0; i < DIMS; i++)
 		if (intersectionDim != i) {
@@ -143,28 +147,29 @@ bool rayHit(const Ray& ray, const vec3& minBounding, const vec3& maxBounding, ve
 }
 
 
+//actually calculates if a ray hits the triangle, and returns the barycentric coordinate
 bool rayHit(const Ray& ray, const Triangle& tri, vec3& barycentric, vec3& hitPoint) {
 
-	fvec3 pvec = glm::cross(ray.direction, tri.E2);
-	float determinant = glm::dot(tri.E1, pvec);
+	vec3 pvec = glm::cross(ray.direction, tri.E2);
+	double determinant = glm::dot(tri.E1, pvec);
 
 
 	if(determinant < glm::dot(tri.E1, pvec)) {
 		return false;
 	}
 
-	float inverseDeterminant = 1.0f / determinant;
+	double inverseDeterminant = 1.0f / determinant;
 
-	fvec3 tvec = ray.origin - tri[0].position;
+	vec3 tvec = ray.origin - tri[0].position;
 
-	float u = glm::dot(tvec, pvec) * inverseDeterminant;
+	double u = glm::dot(tvec, pvec) * inverseDeterminant;
 
 	if (u < 0.0f || u > 1.0f) {
 		return false;
 	}
 
-	fvec3 qvec = glm::cross(tvec, tri.E1);
-	float v = glm::dot(ray.direction, qvec)* inverseDeterminant;
+	vec3 qvec = glm::cross(tvec, tri.E1);
+	double v = glm::dot(ray.direction, qvec)* inverseDeterminant;
 
 	if (v < 0.0f || u + v > 1.0f) {
 		return false;

@@ -1,15 +1,18 @@
 #ifndef MODEL_H
 #define MODEL_H
 
-#include <glm/glm.hpp>
 #include <vector>
 #include <string>
 #include <map>
-#include "Mesh.hpp"
-#include "Shader.hpp"
+
+#include <glm/glm.hpp>
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include "Mesh.hpp"
+#include "Shader.hpp"
 
 using namespace std;
 using namespace glm;

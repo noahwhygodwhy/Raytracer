@@ -21,8 +21,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/norm.hpp>
-/*#define STB_IMAGE_WRITE_IMPLEMENTATION  
-#include "stb_image_write.h"*/
+#define STB_IMAGE_WRITE_IMPLEMENTATION  
+#include "stb_image_write.h"
 
 
 
@@ -31,14 +31,16 @@
 //#include "WorkerPool.hpp"
 #include "Triangle.hpp"
 #include "Ray.hpp"
-
+#include "KDNode.hpp"
 
 using namespace std;
 using namespace glm;
 
 
-uint32_t frameX = 500;
-uint32_t frameY = 500;
+uint32_t framesToRender = 24;
+
+uint32_t frameX = 200;
+uint32_t frameY = 200;
 
 fvec2 pixelOffset = vec2(0.5 / float(frameX), 0.5 / float(frameY));
 
@@ -172,13 +174,49 @@ float angle(vec3 a, vec3 b) {
 	return glm::acos(glm::dot(a, b));
 }
 
-
+//i misunderstood what ndc was when I made this, named incorrectly
 fvec2 frameToNDC(ivec2 fc) {
 	return (fvec2(floatDiv(fc.x, frameX), floatDiv(fc.y, frameY)) * 2.0f) - fvec2(1.0f);
 }
 
+
+//since it's not part of the assignment to write a function to save to image, i just copied this directly from
+//https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
+void saveImage(char* filepath, GLFWwindow* w) {
+	int width, height;
+	glfwGetFramebufferSize(w, &width, &height);
+	GLsizei nrChannels = 3;
+	GLsizei stride = nrChannels * width;
+	stride += (stride % 4) ? (4 - stride % 4) : 0;
+	GLsizei bufferSize = stride * height;
+	std::vector<char> buffer(bufferSize);
+	glPixelStorei(GL_PACK_ALIGNMENT, 4);
+	glReadBuffer(GL_FRONT);
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+	stbi_flip_vertically_on_write(true);
+	stbi_write_png(filepath, width, height, nrChannels, buffer.data(), stride);
+}
+
+void printVector(vector<int> v) {
+	printf("[");
+	for (const int& x : v) {
+		printf("%i, ", x);
+	}
+	printf("]\n");
+}
+
 int main()
 {
+	/*vector<int> a = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+
+	vector<int> b = vector<int>(a.begin(), a.begin()+1);
+
+	printVector(a);
+	printVector(b);
+
+	
+
+	exit(0);*/
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -234,34 +272,14 @@ int main()
 
 	//WorkerPool pool = WorkerPool();
 
-	while (!glfwWindowShouldClose(window))
-	{
-		frameCounter++;
+	uint32_t fps = 24;
 
-		//printf("starting frame %i\n", frameCounter);
+	for (uint32_t frameCounter = 0; frameCounter < framesToRender; frameCounter++) {
+		printf("working frame %i\n", frameCounter);
+		float currentFrame = float(frameCounter) / float(fps);
 
-		//frametime calculation
-		double currentFrame = glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
-
-		//fps calculation
-		if (int(currentFrame) > lastSecondFrameCount) {
-			lastSecondFrameCount = int(currentFrame);
-			float sum = 0;
-			for (float f : frameTimes) {
-				sum += f;
-			}
-			printf("fps: %f\n", sum/30.0f);
-		}
-		frameTimes[frameCounter % 30] = 1.0f/float(deltaTime);
-
-		printf("currentFrame: %f\n", currentFrame);
-		//projection/view matrix 
-		//printf("doing matrcies\n");;
-		//mat4 projection = glm::perspective(radians(70.0f), ratio, near, far);
-		vec3 eye = vec3(sin(currentFrame)*5.0f, 0.0f, cos(currentFrame)*5.0f);
-		//vec3 eye = vec3(0.0f, 0.0f, currentFrame);// vec3(sin(currentFrame) * 5.0f, 0.0f, cos(currentFrame) * 5.0f);
+		constexpr float mypi = glm::pi<float>();
+		vec3 eye = vec3(sin(currentFrame*2*mypi)*5.0f, 0.0f, cos(currentFrame * 2 * mypi)*5.0f);
 
 		mat4 view = glm::lookAt(eye, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
@@ -275,7 +293,6 @@ int main()
 			doTriangles(m, view, triangles);
 			//drawMesh(m, projection, view, m.transform);
 		}
-		printf("did triangles\n");
 
 		float ratio = float(frameX) / float(frameY);
 		float fovY = radians(70.0f);
@@ -283,97 +300,67 @@ int main()
 		vec3 intoScreen(0.0f, 0.0f, -1.0f);
 
 
-		/*triangles = vector<Triangle>();
-		float z = -50.0f;
-		Vertex a = transformIt(view, mat4(1.0f), Vertex(vec3(2.0f, 0.0f, 0.0f), vec2(1.0f, 0.0f)));
-		Vertex b = transformIt(view, mat4(1.0f), Vertex(vec3(0.0f, 0.0f, 2.0f), vec2(0.0f, 0.0f)));
-		Vertex c = transformIt(view, mat4(1.0f), Vertex(vec3(0.0f, 2.0f, 0.0f), vec2(0.0f, 1.0f)));
-		Triangle t = Triangle(a, c, b, NULL);
-		triangles.push_back(t);*/
-
-
-		//printf("triangles transformed, starting drawing\n");
-
-		constexpr float mypi = glm::pi<float>();
-
-		/*printf("triangle:\n\t%s\n\t%s\n\t%s\nbounded by:\n\t%s\n\t%s\n\n",
-			glm::to_string(t[0].position).c_str(),
-			glm::to_string(t[1].position).c_str(),
-			glm::to_string(t[2].position).c_str(),
-			glm::to_string(t.minBounding).c_str(),
-			glm::to_string(t.maxBounding).c_str()
-		);*/
-
-
-		//printf("eye: %s\n", glm::to_string(eye).c_str());
-
-		vec3 bary;
-		vec3 boxCoord;
-		vec3 hitPoint;
-
-
-
-
-		for (uint64_t i = 0; i < frameX * frameY; i++) {
-			{
-				uint32_t x = i % frameX;
-				uint32_t y = i / frameX;
-		//for (uint32_t x = 0; x < frameX; x++) {
-			//for (uint32_t y = 0; y < frameY; y++) {
-
-				if (y == 0) { printf("on pixel %i, %i\n", x, y); }
-				fvec2 clipCoords = frameToNDC(ivec2(x, y));
-				vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));
-				Ray ray(vec3(0), rayVector);
-				float hitDepth = INFINITY;
-				for (const Triangle& tri: triangles) {
-					if (rayHit(ray, tri.minBounding, tri.maxBounding, boxCoord)) {
-						if (rayHit(ray, tri, bary, hitPoint)) {
-							float distance = glm::length2(boxCoord);
-							if (distance < hitDepth) {
-								vec2 fragUV = bary.x * tri[0].texCoords + bary.y * tri[1].texCoords + bary.z * tri[2].texCoords;
-								vec3 fragColor = tri.mesh->diffuse.sample(fragUV);
-								frameBuffer[x + (y * frameX)] = fragColor;
-								hitDepth = distance;
-							}
+		/*concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
+			uint32_t x = i % frameX;
+			uint32_t y = i / frameX;
+			vec3 bary;
+			vec3 boxCoord;
+			vec3 hitPoint;
+			//if (y == 0) { printf("on pixel %i, %i\n", x, y); }
+			vec2 clipCoords = frameToNDC(ivec2(x, y));
+			vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));
+			Ray ray(vec3(0), rayVector);
+			double hitDepth = INFINITY;
+			for (const Triangle& tri : triangles) {
+				if (rayHit(ray, tri.minBounding, tri.maxBounding, boxCoord)) {
+					if (rayHit(ray, tri, bary, hitPoint)) {
+						double distance = glm::length2(boxCoord);
+						if (distance < hitDepth) {
+							vec2 fragUV = bary.x * tri[0].texCoords + bary.y * tri[1].texCoords + bary.z * tri[2].texCoords;
+							vec3 fragColor = tri.mesh->diffuse.sample(fragUV);
+							frameBuffer[x + (y * frameX)] = fragColor;
+							hitDepth = distance;
 						}
-
 					}
+
 				}
 			}
-		}
 
-		//printf("drew all triangles supposedly\n");
-		//printf("drew all mesh\n");
-		//printf("has %i triangles\n", triangles.size());
+		});*/
 
+		printf("all triangles made, about to do kdn\n");
+		const KDBranch* theKDN = new KDBranch(triangles);
+		printf("made kdn\n");
 
-		//TODO: just put them all in one queue then have all the threads process it, instead of going as it's going
-
-		/*queue <fragRef*> fragQueue;
-		for (Triangle& tri : triangles) {
-			if (tri.onscreen) {
-				for (uint32_t fragx = tri.minFrags.x; fragx <= tri.maxFrags.x; fragx++) { //Lines that try to limit the box of fragments to where the triangle should be
-					for (uint32_t fragy = tri.minFrags.y; fragy <= tri.maxFrags.y; fragy++) {
-						fragQueue.push(new fragRef(tri, fragx, fragy));
-						//pool.addJob(new fragRef(tri, fragx, fragy));
-					}
-				}
+		concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
+			uint32_t x = i % frameX;
+			uint32_t y = i / frameX;
+			vec3 bary;
+			vec3 boxCoord;
+			vec3 hitPoint;
+			//if (y == 0) { printf("on pixel %i, %i\n", x, y); }
+			vec2 clipCoords = frameToNDC(ivec2(x, y));
+			vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));
+			Ray ray(vec3(0), rayVector);
+			double hitDepth;
+			const Triangle* tri = rayHit(theKDN, ray, bary, hitDepth);
+			if (tri != NULL) {
+				vec2 fragUV = bary.x * (*tri)[0].texCoords + bary.y * (*tri)[1].texCoords + bary.z * (*tri)[2].texCoords;
+				vec3 fragColor = tri->mesh->diffuse.sample(fragUV);
+				frameBuffer[x + (y * frameX)] = fragColor;
 			}
-		}*/
-		//printf("gibbing que %i\n", fragQueue.size());
-		//pool.gibQue(fragQueue);
+		});
+		printf("did parallelForloop\n");
 
-		//printf("waiting for empty queue\n");
-		//pool.waitForEmptyQueue();
-		//printf("empty queue\n");
-		//printf("moving to opengl stuff\n");
+
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameX, frameY, 0, GL_RGB, GL_FLOAT, frameBuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
 		processInput(window);
 		glfwPollEvents();
+
+		saveImage((char*)("out/"+std::to_string(frameCounter) + ".png").c_str(), window);
 		cin.get();
 
 	}
