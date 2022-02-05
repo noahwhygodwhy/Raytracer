@@ -156,15 +156,23 @@
     <None Include="vert.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Animatable.hpp" />
+    <ClInclude Include="CoordinateHelpers.hpp" />
+    <ClInclude Include="DirectionalLight.hpp" />
     <ClInclude Include="glad.h" />
     <ClInclude Include="KDNode.hpp" />
+    <ClInclude Include="Light.hpp" />
+    <ClInclude Include="Material.hpp" />
     <ClInclude Include="Mesh.hpp" />
+    <ClInclude Include="Plane.hpp" />
+    <ClInclude Include="PointLight.hpp" />
+    <ClInclude Include="Shape.hpp" />
     <ClInclude Include="Ray.hpp" />
     <ClInclude Include="Shader.hpp" />
+    <ClInclude Include="Sphere.hpp" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="Triangle.hpp" />
-    <ClInclude Include="WorkerPool.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

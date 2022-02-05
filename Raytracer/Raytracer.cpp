@@ -26,21 +26,27 @@
 
 
 
+
 #include "Shader.hpp"
-#include "Model.hpp"
+//#include "Model.hpp"
 //#include "WorkerPool.hpp"
 #include "Triangle.hpp"
 #include "Ray.hpp"
 #include "KDNode.hpp"
+#include "Shape.hpp"
+#include "Sphere.hpp"
+
+#include "Light.hpp"
+#include "PointLight.hpp"
 
 using namespace std;
 using namespace glm;
 
 
-uint32_t framesToRender = 24;
+uint32_t framesToRender = 1;
 
-uint32_t frameX = 200;
-uint32_t frameY = 200;
+uint32_t frameX = 250;
+uint32_t frameY = 250;
 
 fvec2 pixelOffset = vec2(0.5 / float(frameX), 0.5 / float(frameY));
 
@@ -58,7 +64,7 @@ double lastFrame = 0.0f; // Time of last frame
 
 
 //Applies the projection and view matrix to the point
-Vertex transformIt(const mat4& view, const mat4& model, Vertex v) {
+/*Vertex transformIt(const mat4& view, const mat4& model, Vertex v) {
 	//mat4 mvp = projection * view * model; //for rasterization
 	mat4 mvp = view * model; //for raytracing
 	mat4 normalMat = glm::inverse(glm::transpose(model));
@@ -66,7 +72,7 @@ Vertex transformIt(const mat4& view, const mat4& model, Vertex v) {
 	v.position = newPos / newPos.w;// vec3(newPos.x, newPos.y, newPos.z) / newPos.w;
 	v.normal = normalMat * vec4(v.normal, 1.0f);
 	return v;
-}
+}*/
 
 void processInput(GLFWwindow* window)
 {
@@ -146,7 +152,7 @@ bool frontFacing(vec3 a, vec3 b, vec3 c) {
 	}
 }*/
 
-void doTriangles(Mesh& mesh, const mat4& view, vector<Triangle>& triangles) {
+/*void doTriangles(Mesh& mesh, const mat4& view, vector<Triangle>* triangles, vec3& minSceneBounding, vec3& maxSceneBounding) {
 	vector<Vertex> transformedVertices(mesh.indices.size());
 	for (uint64_t i = 0; i < mesh.indices.size(); i++) {
 		transformedVertices[i] = transformIt(view, mesh.getModelMat(), mesh.vertices[mesh.indices[i]]);
@@ -154,11 +160,16 @@ void doTriangles(Mesh& mesh, const mat4& view, vector<Triangle>& triangles) {
 
 	//construct triangles out of vertices
 	for (int i = 0; i < transformedVertices.size(); i += 3) {
+		for (int k = 0; k < 3; k++) {
+			minSceneBounding = glm::min(minSceneBounding, transformedVertices[i + k].position);
+			maxSceneBounding = glm::max(maxSceneBounding, transformedVertices[i + k].position);
+		}
+
 		if (frontFacing(transformedVertices[i + 0].position,
 			transformedVertices[i + 1].position,
 			transformedVertices[i + 2].position)) {
 
-			triangles.push_back(Triangle(
+			triangles->push_back(Triangle(
 				transformedVertices[i + 0],
 				transformedVertices[i + 1],
 				transformedVertices[i + 2],
@@ -166,12 +177,17 @@ void doTriangles(Mesh& mesh, const mat4& view, vector<Triangle>& triangles) {
 			));
 		}
 	}
-}
+}*/
 
 
 
 float angle(vec3 a, vec3 b) {
 	return glm::acos(glm::dot(a, b));
+}
+
+
+float floatDiv(uint64_t a, uint64_t b) {
+	return float(a) / float(b);
 }
 
 //i misunderstood what ndc was when I made this, named incorrectly
@@ -184,7 +200,10 @@ fvec2 frameToNDC(ivec2 fc) {
 //https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
 void saveImage(char* filepath, GLFWwindow* w) {
 	int width, height;
-	glfwGetFramebufferSize(w, &width, &height);
+	//glfwGetFramebufferSize(w, &width, &height);
+
+	width = frameX;
+	height = frameY;
 	GLsizei nrChannels = 3;
 	GLsizei stride = nrChannels * width;
 	stride += (stride % 4) ? (4 - stride % 4) : 0;
@@ -192,9 +211,9 @@ void saveImage(char* filepath, GLFWwindow* w) {
 	std::vector<char> buffer(bufferSize);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glReadBuffer(GL_FRONT);
-	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, frameBuffer);
 	stbi_flip_vertically_on_write(true);
-	stbi_write_png(filepath, width, height, nrChannels, buffer.data(), stride);
+	stbi_write_png(filepath, frameX, frameY, nrChannels, frameBuffer, stride);
 }
 
 void printVector(vector<int> v) {
@@ -205,18 +224,74 @@ void printVector(vector<int> v) {
 	printf("]\n");
 }
 
+
+
+
+
+HitResult shootRay(const Ray& ray, const vector<Shape*>& shapes, const dmat4& view, double currentTime) {
+
+	HitResult minRayResult;
+	minRayResult.shape = NULL;
+	minRayResult.depth = INFINITY;
+	for (Shape* shape : shapes) {
+		HitResult rayResult;
+		//if (shape->rayAABB(ray, view)) {
+			if (shape->rayHit(ray, rayResult, view, currentTime)) {
+				if (rayResult.depth < minRayResult.depth) {
+					minRayResult = rayResult;
+				}
+			}
+		//}
+	}
+	return minRayResult;
+}
+
+bool rayTrace(const Ray& ray, const vector<Shape*>& shapes, const vector<Light*>& lights, const mat4& view, vec3& colorResult, double currentTime)
+{
+	double bias = 1e-4;
+	//constexpr float epsilon = glm::epsilon<float>();
+	colorResult = dvec3(0);
+	HitResult minRayResult = shootRay(ray, shapes, view, currentTime);
+	if (minRayResult.shape != NULL) {
+		//printf("hit position: %s\n", glm::to_string(minRayResult.position).c_str());
+		dvec3 diffuse = dvec3(0.0);
+
+		for (Light* light : lights) {
+
+			Ray lightRay = light->getRay(minRayResult.position+(minRayResult.normal*bias), view);
+			HitResult lightRayResult = shootRay(lightRay, shapes, view, currentTime);
+
+			double lightDistance = light->getDistance(minRayResult.position, view);
+
+			//printf("light distance2 %f\n", lightDistance2);
+			if (lightDistance < lightRayResult.depth) {
+
+				double diff = glm::max(glm::dot(minRayResult.normal, lightRay.direction), 0.0);
+				//printf("supposed distance to light: %f\n", distanceToLight);
+				//printf("actual distance to light: %f\n", glm::sqrt(distanceToLight));
+				diffuse += light->color * diff / light->getAttenuation(lightDistance);
+
+				//diffuse = dvec3(lightDistance2 / 50.0);
+				//printf("distance to light: %f\n", sqrt(distanceToLight));
+
+				//take the light into account, otherwise don't add the light value
+			}
+		}
+
+
+		colorResult = diffuse * minRayResult.shape->getColor(minRayResult);
+		//colorResult = minRayResult.shape->getColor(minRayResult);
+
+
+		return true;
+	}
+	return false;
+
+
+}
+
 int main()
 {
-	/*vector<int> a = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-
-	vector<int> b = vector<int>(a.begin(), a.begin()+1);
-
-	printVector(a);
-	printVector(b);
-
-	
-
-	exit(0);*/
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -252,7 +327,6 @@ int main()
 
 	//make framebuffers
 	frameBuffer = new vec3[frameX * frameY]();
-	//depthBuffer = new float[frameX * frameY]();
 
 	//initialize textured that the framebuffer gets written to display it on a triangle
 	unsigned int frameTexture;
@@ -264,92 +338,68 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	//Model backpack("brick");
-	Model backpack = Model("backpack");
+	//Model backpack = Model("backpack");
 
 	int frameCounter = -1;
 	float frameTimes[30](0);
 	int lastSecondFrameCount = -1;
 
-	//WorkerPool pool = WorkerPool();
+	vector<Shape*> shapes;
+	shapes.push_back(new Sphere(dvec3(0), 1.0, oscilateX));
+	shapes.push_back(new Sphere(dvec3(0, -5, 0), 3.0, noMovement));
+	shapes.push_back(new Sphere(dvec3(3, 0, 0), 1.0, noMovement));
+
+	vector<Light*> lights;
+
+	lights.push_back(new PointLight(
+		dvec3(1.0, 5.0, 0.0),
+		dvec3(1.0, 1.0, 1.0),
+		dvec3(1.0, 0.09, 0.032)
+	));
+
+
+
 
 	uint32_t fps = 24;
-
-	for (uint32_t frameCounter = 0; frameCounter < framesToRender; frameCounter++) {
+	while (!glfwWindowShouldClose(window)) {
+	//for (uint32_t frameCounter = 0; frameCounter < framesToRender; frameCounter++) {
 		printf("working frame %i\n", frameCounter);
-		float currentFrame = float(frameCounter) / float(fps);
+		//float currentFrame = float(frameCounter) / float(fps);
+
+		double currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
+		//((PointLight*)lights.at(0))->position = vec3(sin(currentFrame * 2.0f) * 20.0f, 5.0f, 0.0f);
 
 		constexpr float mypi = glm::pi<float>();
-		vec3 eye = vec3(sin(currentFrame*2*mypi)*5.0f, 0.0f, cos(currentFrame * 2 * mypi)*5.0f);
+		//vec3 eye = vec3(sin(currentFrame) * 10.0f, 2.0f, cos(currentFrame) * 10.0f);
+		vec3 eye = vec3(0.0f, 2.0f, 5.0f);
 
 		mat4 view = glm::lookAt(eye, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
 		//printf("clearing buffers\n");
 		clearBuffers();
 
-		vector<Triangle> triangles;
+		//vector<Triangle>* triangles = new vector<Triangle>();
 
-		//printf("drawing some mesh\n");
-		for (Mesh& m : backpack.children) {
-			doTriangles(m, view, triangles);
-			//drawMesh(m, projection, view, m.transform);
-		}
-
-		float ratio = float(frameX) / float(frameY);
-		float fovY = radians(70.0f);
-		float fovX = fovY * ratio;
-		vec3 intoScreen(0.0f, 0.0f, -1.0f);
-
-
-		/*concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
-			uint32_t x = i % frameX;
-			uint32_t y = i / frameX;
-			vec3 bary;
-			vec3 boxCoord;
-			vec3 hitPoint;
-			//if (y == 0) { printf("on pixel %i, %i\n", x, y); }
-			vec2 clipCoords = frameToNDC(ivec2(x, y));
-			vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));
-			Ray ray(vec3(0), rayVector);
-			double hitDepth = INFINITY;
-			for (const Triangle& tri : triangles) {
-				if (rayHit(ray, tri.minBounding, tri.maxBounding, boxCoord)) {
-					if (rayHit(ray, tri, bary, hitPoint)) {
-						double distance = glm::length2(boxCoord);
-						if (distance < hitDepth) {
-							vec2 fragUV = bary.x * tri[0].texCoords + bary.y * tri[1].texCoords + bary.z * tri[2].texCoords;
-							vec3 fragColor = tri.mesh->diffuse.sample(fragUV);
-							frameBuffer[x + (y * frameX)] = fragColor;
-							hitDepth = distance;
-						}
-					}
-
-				}
-			}
-
-		});*/
-
-		printf("all triangles made, about to do kdn\n");
-		const KDBranch* theKDN = new KDBranch(triangles);
-		printf("made kdn\n");
-
+		//for (uint64_t i = 0; i < frameX * frameY; i++) {
 		concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
 			uint32_t x = i % frameX;
 			uint32_t y = i / frameX;
-			vec3 bary;
-			vec3 boxCoord;
-			vec3 hitPoint;
-			//if (y == 0) { printf("on pixel %i, %i\n", x, y); }
+
 			vec2 clipCoords = frameToNDC(ivec2(x, y));
-			vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));
-			Ray ray(vec3(0), rayVector);
-			double hitDepth;
-			const Triangle* tri = rayHit(theKDN, ray, bary, hitDepth);
-			if (tri != NULL) {
-				vec2 fragUV = bary.x * (*tri)[0].texCoords + bary.y * (*tri)[1].texCoords + bary.z * (*tri)[2].texCoords;
-				vec3 fragColor = tri->mesh->diffuse.sample(fragUV);
-				frameBuffer[x + (y * frameX)] = fragColor;
+			vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));//TODO: this is incorrect
+			Ray initialRay(vec3(0), rayVector);
+			vec3 colorResult;
+
+			bool hit = rayTrace(initialRay, shapes, lights, view, colorResult, currentFrame);
+			if (hit) {
+				frameBuffer[x + (y * frameX)] = colorResult;
 			}
 		});
+		//}
+
 		printf("did parallelForloop\n");
 
 
@@ -361,10 +411,12 @@ int main()
 		glfwPollEvents();
 
 		saveImage((char*)("out/"+std::to_string(frameCounter) + ".png").c_str(), window);
-		cin.get();
+		//cin.get();
 
 	}
 	//pool.stop();
 	std::printf("closing\n");
 	glfwTerminate();
 }
+
+
