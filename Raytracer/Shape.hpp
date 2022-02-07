@@ -28,21 +28,22 @@ struct HitResult {
 class Shape
 {
 public:
-	Shape(AABB boundingBox, const dmat4& model);
+	Shape(AABB boundingBox, const Material& material, const dmat4& model);
 	~Shape();
 	bool rayAABB(const Ray& ray, const mat4& view);
 	virtual bool rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double currentTime)const = 0;
 	virtual dvec3 getColor(const HitResult& hit)const = 0;
 	dmat4 model;
+	Material mat;
 private:
 	AABB boundingBox;
-	Material mat;
 	
 };
 
-Shape::Shape(AABB boundingBox, const dmat4& model = dmat4(1.0))
+Shape::Shape(AABB boundingBox,const Material& material = materials.at("Bug"), const dmat4& model = dmat4(1.0))
 {
 	this->model = model;
+	this->mat = material;
 	this->boundingBox = boundingBox;
 }
 

@@ -10,7 +10,7 @@ using namespace glm;
 class Sphere : public Shape, public Animatable
 {
 public:
-	Sphere(const dvec3& origin, double radius, dmat4(*movementFunction)(double currentTime));
+	Sphere(const dvec3& origin, double radius, const Material& mat, dmat4(*movementFunction)(double currentTime));
 	~Sphere();
 	bool rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double currentTime)const;
 	dvec3 getColor(const HitResult& hit)const;
@@ -20,13 +20,14 @@ private:
 	dvec3 origin;
 };
 
-Sphere::Sphere(const dvec3& origin, double radius, dmat4(*movementFunction)(double currentTime))
-	: Shape(AABB(origin - dvec3(radius), origin + dvec3(radius)))
+Sphere::Sphere(const dvec3& origin, double radius, const Material& mat, dmat4(*movementFunction)(double currentTime))
+	: Shape(AABB(origin - dvec3(radius), origin + dvec3(radius)), mat)
 	, Animatable(movementFunction)
 {
 	this->origin = origin;
 	this->radius = radius;
 	this->r2 = radius * radius;
+
 }
 
 Sphere::~Sphere()
@@ -36,7 +37,7 @@ Sphere::~Sphere()
 
 dvec3 Sphere::getColor(const HitResult& hit) const {
 	//return glm::abs(hit.normal);
-	return vec3(1.0f, 0.0f, 0.2f);
+	return vec3(1.0f, 1.0f, 1.0f);
 }
 //based on the geomtric sphere/ray intersection in 
 //https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection

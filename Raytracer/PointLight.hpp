@@ -8,7 +8,6 @@
 using namespace std;
 using namespace glm;
 
-
 class PointLight : public Light
 {
 public:
@@ -17,8 +16,8 @@ public:
 	double getDistance(const dvec3& rayOrigin, const dmat4& view) const;
 	Ray getRay(const dvec3& rayOrigin, const dmat4& view) const;
 	double getAttenuation(double distance)const;
-	dvec3 position; 
 private:
+	dvec3 position; 
 	double constant;
 	double linear;
 	double quadratic;

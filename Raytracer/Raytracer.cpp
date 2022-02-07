@@ -38,29 +38,44 @@
 
 #include "Light.hpp"
 #include "PointLight.hpp"
+#include "DirectionalLight.hpp"
+
 
 using namespace std;
 using namespace glm;
 
+#define MAXBOUNCES 8
+//#define OUTPUTFRAMES
 
-uint32_t framesToRender = 1;
+uint32_t framesToRender = 151;
 
-uint32_t frameX = 250;
-uint32_t frameY = 250;
 
-fvec2 pixelOffset = vec2(0.5 / float(frameX), 0.5 / float(frameY));
+uint32_t frameX = 500;
+uint32_t frameY = 500;
+double frameRatio = double(frameX) / double(frameY);
+
+//dvec2 pixelOffset = vec2(0.5 / float(frameX), 0.5 / float(frameY));
 
 float screenRatio = float(frameX) / float(frameY);
-uint64_t screenY = 1000;// scaleFactor* frameY;
-uint64_t screenX = uint64_t(1000.0f* screenRatio);// scaleFactor* frameX;
+uint64_t screenY = glm::max(1000u, frameX);// scaleFactor* frameY;
+uint64_t screenX = uint64_t(glm::max(1000u, frameX) * screenRatio);// scaleFactor* frameX;
 
-const float near = 0.1f;
-const float far = 50.0f;
+//const float near = 0.1f;
+//const float far = 50.0f;
 
-vec3 clearColor(0.0f, 0.0f, 0.0f);
+dvec3 clearColor(0.21, 0.78, 0.95);
 
 double deltaTime = 0.0f;	// Time between current frame and last frame
 double lastFrame = 0.0f; // Time of last frame
+
+
+struct FrameInfo {
+	vector<Shape*> shapes;
+	vector<Light*> lights;
+	dmat4 view;
+	double currentTime;
+};
+
 
 
 //Applies the projection and view matrix to the point
@@ -181,19 +196,6 @@ bool frontFacing(vec3 a, vec3 b, vec3 c) {
 
 
 
-float angle(vec3 a, vec3 b) {
-	return glm::acos(glm::dot(a, b));
-}
-
-
-float floatDiv(uint64_t a, uint64_t b) {
-	return float(a) / float(b);
-}
-
-//i misunderstood what ndc was when I made this, named incorrectly
-fvec2 frameToNDC(ivec2 fc) {
-	return (fvec2(floatDiv(fc.x, frameX), floatDiv(fc.y, frameY)) * 2.0f) - fvec2(1.0f);
-}
 
 
 //since it's not part of the assignment to write a function to save to image, i just copied this directly from
@@ -216,27 +218,22 @@ void saveImage(char* filepath, GLFWwindow* w) {
 	stbi_write_png(filepath, frameX, frameY, nrChannels, frameBuffer, stride);
 }
 
-void printVector(vector<int> v) {
-	printf("[");
-	for (const int& x : v) {
-		printf("%i, ", x);
-	}
-	printf("]\n");
-}
 
 
 
 
 
-HitResult shootRay(const Ray& ray, const vector<Shape*>& shapes, const dmat4& view, double currentTime) {
+HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 
 	HitResult minRayResult;
 	minRayResult.shape = NULL;
 	minRayResult.depth = INFINITY;
-	for (Shape* shape : shapes) {
+
+	//TODO: navigate octtree instead
+	for (Shape* shape : fi.shapes) {
 		HitResult rayResult;
-		//if (shape->rayAABB(ray, view)) {
-			if (shape->rayHit(ray, rayResult, view, currentTime)) {
+		//if (shape->rayAABB(ray, view)) { //TODO:
+			if (shape->rayHit(ray, rayResult, fi.view, fi.currentTime)) {
 				if (rayResult.depth < minRayResult.depth) {
 					minRayResult = rayResult;
 				}
@@ -246,48 +243,48 @@ HitResult shootRay(const Ray& ray, const vector<Shape*>& shapes, const dmat4& vi
 	return minRayResult;
 }
 
-bool rayTrace(const Ray& ray, const vector<Shape*>& shapes, const vector<Light*>& lights, const mat4& view, vec3& colorResult, double currentTime)
+
+
+
+bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, uint32_t layer = 0)
 {
 	double bias = 1e-4;
-	//constexpr float epsilon = glm::epsilon<float>();
 	colorResult = dvec3(0);
-	HitResult minRayResult = shootRay(ray, shapes, view, currentTime);
+	HitResult minRayResult = shootRay(ray, fi);
 	if (minRayResult.shape != NULL) {
-		//printf("hit position: %s\n", glm::to_string(minRayResult.position).c_str());
 		dvec3 diffuse = dvec3(0.0);
+		dvec3 specular = dvec3(0.0);
+		dvec3 ambient = (clearColor*0.1)*minRayResult.shape->mat.ka;
+		for (Light* light : fi.lights) {
 
-		for (Light* light : lights) {
+			Ray lightRay = light->getRay(minRayResult.position+(minRayResult.normal*bias), fi.view);
+			HitResult lightRayResult = shootRay(lightRay, fi);
 
-			Ray lightRay = light->getRay(minRayResult.position+(minRayResult.normal*bias), view);
-			HitResult lightRayResult = shootRay(lightRay, shapes, view, currentTime);
+			double lightDistance = light->getDistance(minRayResult.position, fi.view);
+			if (lightDistance < lightRayResult.depth) {//shawows
 
-			double lightDistance = light->getDistance(minRayResult.position, view);
+				double attenuation = light->getAttenuation(lightDistance);
 
-			//printf("light distance2 %f\n", lightDistance2);
-			if (lightDistance < lightRayResult.depth) {
+				dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal)- lightRay.direction);
 
-				double diff = glm::max(glm::dot(minRayResult.normal, lightRay.direction), 0.0);
-				//printf("supposed distance to light: %f\n", distanceToLight);
-				//printf("actual distance to light: %f\n", glm::sqrt(distanceToLight));
-				diffuse += light->color * diff / light->getAttenuation(lightDistance);
+				//ambient += minRayResult.shape->mat.ka;
 
-				//diffuse = dvec3(lightDistance2 / 50.0);
-				//printf("distance to light: %f\n", sqrt(distanceToLight));
+				double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);/*^to the specular exponent*/
+				specular += (minRayResult.shape->mat.ks*light->color * spec) / attenuation;
 
-				//take the light into account, otherwise don't add the light value
+				double diff = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
+				diffuse += (minRayResult.shape->mat.kd*light->color * diff) / attenuation;
+
 			}
 		}
 
+		bool oddSecond = uint32_t(floor(fi.currentTime)) % 2 == 0;
 
-		colorResult = diffuse * minRayResult.shape->getColor(minRayResult);
+		colorResult = (ambient + diffuse + specular) * minRayResult.shape->getColor(minRayResult);
 		//colorResult = minRayResult.shape->getColor(minRayResult);
-
-
 		return true;
 	}
 	return false;
-
-
 }
 
 int main()
@@ -345,62 +342,156 @@ int main()
 	int lastSecondFrameCount = -1;
 
 	vector<Shape*> shapes;
-	shapes.push_back(new Sphere(dvec3(0), 1.0, oscilateX));
-	shapes.push_back(new Sphere(dvec3(0, -5, 0), 3.0, noMovement));
-	shapes.push_back(new Sphere(dvec3(3, 0, 0), 1.0, noMovement));
+
+	//shapes.push_back(new Sphere(dvec3(0), 1.0, oscilateX));
+	
+
+
+
+	//TODO: two spheres makes it hard. NEED to do the octtree
+
+	shapes.push_back(new Sphere(dvec3(0, 3, 0), 2.0, materials.at("Bronze"), oscilateX));
+	shapes.push_back(new Sphere(dvec3(0, -3, 0), 2.0, materials.at("Polished Bronze"), oscilateX));
+	//shapes.push_back(new Sphere(dvec3(3, 0, 0), 1.0, noMovement));
 
 	vector<Light*> lights;
 
 	lights.push_back(new PointLight(
-		dvec3(1.0, 5.0, 0.0),
-		dvec3(1.0, 1.0, 1.0),
+		dvec3(0.0, 7.0, 7.0),
+		dvec3(0.8, 0.8, 1.0),
 		dvec3(1.0, 0.09, 0.032)
 	));
 
+	/*lights.push_back(new DirectionalLight(
+		dvec3(-0.3, -1.0, 0.0),
+		dvec3(0.5, 0.0, 0.0)
+	));*/
+
+
+
+
+	FrameInfo fi;
+	fi.currentTime = 0;
+	fi.shapes = shapes;
+	fi.lights = lights;
+	fi.view = mat4(1.0);
 
 
 
 	uint32_t fps = 24;
+#ifdef OUTPUTFRAMES
+	for (uint32_t frameCounter = 0; frameCounter < framesToRender; frameCounter++) {
+		double currentFrame = double(frameCounter) / double(fps);
+#else
 	while (!glfwWindowShouldClose(window)) {
-	//for (uint32_t frameCounter = 0; frameCounter < framesToRender; frameCounter++) {
-		printf("working frame %i\n", frameCounter);
-		//float currentFrame = float(frameCounter) / float(fps);
-
 		double currentFrame = glfwGetTime();
+#endif
+		//printf("working frame %i\n", frameCounter);
+
+		fi.currentTime = currentFrame;
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
 		//((PointLight*)lights.at(0))->position = vec3(sin(currentFrame * 2.0f) * 20.0f, 5.0f, 0.0f);
 
-		constexpr float mypi = glm::pi<float>();
+		constexpr double mypi = glm::pi<double>();
 		//vec3 eye = vec3(sin(currentFrame) * 10.0f, 2.0f, cos(currentFrame) * 10.0f);
-		vec3 eye = vec3(0.0f, 2.0f, 5.0f);
 
-		mat4 view = glm::lookAt(eye, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
-
-		//printf("clearing buffers\n");
 		clearBuffers();
 
-		//vector<Triangle>* triangles = new vector<Triangle>();
+
+		dvec3 cameraForward = dvec3(0.0, 0.0, -1.0);
+		dvec3 cameraUp = dvec3(0.0, 1.0, 0.0);
+
+		dvec3 eye = vec3(0.0, 2.0, 10.0); 
+		//dmat4 view = glm::lookAt(eye, eye+cameraForward, cameraUp);
+		fi.view = glm::lookAt(eye, eye + cameraForward, cameraUp);
+		//printf("focal: %f\n", focal);
+
+
+
+		double pixelWidth = 2.0 / double(frameX);
+		double halfPixel = 1.0 / double(frameX);
+		double quarterPixel = 0.5 / double(frameX);
+
+		double startingX = (-pixelWidth * (frameX / 2.0f));
+
+		double viewPortHeight = 2.0f;
+		double viewPortWidth = viewPortHeight * frameRatio;
+
+		double fov = 70;
+		//printf("current frame: %f\n", fov);
+		double focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
+		//double focal = 1.0;
+
+
+		//printf("Framerati: %f\n", frameRatio);
+
+		dvec3 horizontal = dvec3(viewPortWidth, 0, 0);
+		dvec3 vertical = dvec3(0, viewPortHeight, 0);
+
+		dvec2 hv(viewPortWidth, viewPortHeight);
+		dvec3 origin(0);
+		dvec3 lowerLeftCorner = origin - (horizontal / 2.0) - (vertical / 2.0) - dvec3(0, 0, focal);
+
+
+
+		//printf("lowerleftcorner: %s\n", glm::to_string(lowerLeftCorner).c_str());
+
+
 
 		//for (uint64_t i = 0; i < frameX * frameY; i++) {
 		concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
 			uint32_t x = i % frameX;
 			uint32_t y = i / frameX;
 
-			vec2 clipCoords = frameToNDC(ivec2(x, y));
-			vec3 rayVector = glm::normalize(vec3(clipCoords * mypi, -mypi));//TODO: this is incorrect
-			Ray initialRay(vec3(0), rayVector);
-			vec3 colorResult;
+			//double u = double(x) / double((frameX - 1.0));
+			//double v = double(y) / double((frameY - 1.0));
+			
+			dvec2 uv(double(x) / double((frameX - 1.0)), double(y) / double((frameY - 1.0)));
+			dvec2 clipSpacePixelSize(dvec2(1.0 / double(frameX - 1.0), 1.0 / double(frameY - 1.0)));
 
-			bool hit = rayTrace(initialRay, shapes, lights, view, colorResult, currentFrame);
-			if (hit) {
-				frameBuffer[x + (y * frameX)] = colorResult;
+
+
+			//dvec3 rayVector = lowerLeftCorner + (uv.x * horizontal) + (uv.y * vertical);
+
+			//Ray initialRay(dvec3(0.0, 0.0, focal), glm::normalize(rayVector));
+			//dvec3 colorResult(0.0);
+
+
+			//multisample n*n
+			uint32_t n = 1;
+			dvec3 colorAcum(0);
+
+			dvec2 pixelBottomLeft = ((uv.x * horizontal) + (uv.y * vertical)).xy - (clipSpacePixelSize / 2.0);
+
+			for (uint32_t x = 1; x <= n; x++) {
+				double offsetX = x * (clipSpacePixelSize.x / (n + 1));
+				for (uint32_t y = 1; y <= n; y++) {
+					double offsetY = y * (clipSpacePixelSize.y / (n + 1));
+					//printf("x: %u, y: %u\n", x, y);
+					//printf("offsetY: %f, offsetX: %f\n", offsetX, offsetY);
+					dvec3 rayVector = lowerLeftCorner + (uv.x * horizontal) + (uv.y * vertical) + dvec3(offsetX, offsetY, 0.0);
+
+					dvec3 colorOut;
+
+					Ray initialRay(dvec3(0.0, 0.0, focal), glm::normalize(rayVector));
+					bool hit = rayTrace(initialRay, fi, colorOut);
+					if (hit) {
+						colorAcum += colorOut;
+					}
+					else {
+
+						colorAcum += clearColor;
+					}
+
+				}
 			}
+			frameBuffer[x + (y * frameX)] = colorAcum / double(n * n);
 		});
 		//}
 
-		printf("did parallelForloop\n");
+		//printf("did parallelForloop\n");
 
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameX, frameY, 0, GL_RGB, GL_FLOAT, frameBuffer);
@@ -409,8 +500,9 @@ int main()
 		glfwSwapBuffers(window);
 		processInput(window);
 		glfwPollEvents();
-
+#ifdef OUTPUTFRAMES
 		saveImage((char*)("out/"+std::to_string(frameCounter) + ".png").c_str(), window);
+#endif
 		//cin.get();
 
 	}

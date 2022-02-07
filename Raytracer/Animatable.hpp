@@ -27,9 +27,9 @@ private:
 
 };
 
-Animatable::Animatable(dmat4(*movementFunction)(double currentTime) = noMovement)
+Animatable::Animatable(dmat4(*mf)(double currentTime))
 {
-	this->movementFunction = movementFunction;
+	this->movementFunction = mf;
 }
 
 Animatable::~Animatable()

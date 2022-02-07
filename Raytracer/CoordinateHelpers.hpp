@@ -1,6 +1,9 @@
 #ifndef COORDINATE_HELPERS_H
 #define COORDINATE_HELPERS_H
 
+#include <glm/glm.hpp>
+using namespace std;
+using namespace glm;
 
 
 dvec3 transformNormal(const dvec3& x, const dmat4& model) {
