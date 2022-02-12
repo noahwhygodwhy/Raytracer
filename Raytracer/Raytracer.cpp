@@ -47,7 +47,7 @@ using namespace std::filesystem;
 using namespace glm;
 
 #define MAXBOUNCES 8
-#define OUTPUTFRAMES 151
+//#define OUTPUTFRAMES 151
 #define CONCURRENT_FOR
 
 
@@ -76,6 +76,7 @@ struct FrameInfo {
 	vector<Shape*> shapes;
 	vector<Light*> lights;
 	dmat4 view;
+	dvec3 camPosition;
 	double currentTime;
 };
 
@@ -181,9 +182,10 @@ void saveImage(string filepath, GLFWwindow* w) {
 }*/
 
 
-double shlicksApprox(double prevIOR, double newIOR, const vec3& normal, const vec3& lightRay) {
+double shlicksApprox(double prevIOR, double newIOR, const vec3& normal, const vec3& viewVector) {
 	double r0 = glm::pow((prevIOR - newIOR) / (prevIOR + newIOR), 2.0);
-	double rTheta = r0 + ((1 - r0) * (1 - glm::dot(normal, lightRay)));
+
+	double rTheta = r0 + ((1 - r0) * (1 - glm::acos(glm::dot(normal, viewVector))));
 	return rTheta;
 }
 
@@ -209,10 +211,28 @@ HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 }
 
 
+constexpr double kj = 0.1;//given in the paper
+constexpr double kf = 1.12;
+constexpr double kg = 1.01;
 
+double F(double x) {
+	float num = (1 / (glm::pow(x - kf, 2.0))) - (1 / glm::pow(kf, 2.0));
+	float denom = (1 / glm::pow(1 - kf, 2.0)) - (1 / glm::pow(kf, 2.0));
+	return num / denom;
+}
+
+double G(double x) {
+	double num = (1 / glm::pow(1 - kg, 2.0)) - (1 / glm::pow(x - kg, 2.0));
+	double denom = (1 / glm::pow(1 - kg, 2.0)) - (1 / glm::pow(kg, 2.0));
+	return num / denom;
+}
 
 bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult& minRayResult, double currentIOR = 1.0, uint32_t layer = 0)
 {
+
+	if (layer > MAXBOUNCES) {
+		return false;
+	}
 
 	
 	double bias = 1e-4;
@@ -252,9 +272,45 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 
 
 
-		dvec3 diffuse = dvec3(0.0);
-		dvec3 specular = dvec3(0.0);
-		dvec3 ambient = (clearColor * 0.1)* minRayResult.shape->mat.ka;//TODO this is wrong, like really, be bettter
+		//dvec3 diffuse = dvec3(0.0);
+		//dvec3 specular = dvec3(0.0);
+		//dvec3 ambient = (clearColor * 0.1)* minRayResult.shape->mat.ka;//TODO this is wrong, like really, be bettter
+
+		Material mat = minRayResult.shape->mat;
+
+		double hitAngle = glm::acos(glm::dot(minRayResult.normal, ray.inverseDirection));
+
+		bool entering = hitAngle < (glm::pi<double>() / 2.0);
+
+
+		HitResult transparentRayHit;
+		dvec3 transparentRayResult = clearColor;
+		if (mat.transparency > 0.0) {
+			//based on https://physics.stackexchange.com/questions/435512/snells-law-in-vector-form
+			dvec3 ncs = glm::cross(minRayResult.normal, ray.inverseDirection);
+			double inSqrt = 1.0-((glm::pow(currentIOR / mat.ni, 2.0) * glm::dot(ncs, ncs)));
+			dvec3 rightSide = minRayResult.normal * glm::sqrt(inSqrt);
+			dvec3 leftSide = (currentIOR / mat.ni) * glm::cross(minRayResult.normal, glm::cross(-minRayResult.normal, ray.inverseDirection));
+
+			dvec3 refractionRayDir = glm::normalize(leftSide - rightSide);
+			dvec3 refractionRayPos = minRayResult.position + (minRayResult.normal * (entering ? -1.0 : 1.0));
+
+			Ray refractionRay(refractionRayPos, refractionRayDir);
+
+			rayTrace(ray, fi, transparentRayResult, transparentRayHit, mat.ni, layer + 1);
+
+		}
+
+
+
+
+		//colorResult += dvec3(0.05)*mat.kd;
+
+		dvec3 lightColorResult = dvec3(0.0);
+		double kr = shlicksApprox(currentIOR, mat.ni, minRayResult.normal, ray.inverseDirection);
+
+		//printf("kr: %f\n", kr);
+
 		for (Light* light : fi.lights) {
 
 			Ray lightRay = light->getRay(minRayResult.position+(minRayResult.normal*bias), fi.view);//should be in camera space
@@ -267,28 +323,62 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 			double lightDistance = light->getDistance(minRayResult.position, fi.view);
 			if (lightDistance < lightRayResult.depth) {//shawows
 
+
+
 				double attenuation = light->getAttenuation(lightDistance);
 
+				//bad attempt at porting strauss to the raytracer
+				//dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal) - lightRay.direction);
+				//double specular = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);//to the specular exponent
+				//double diffuse = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
+				//double attenuation = light->getAttenuation(lightDistance);
+				//double angleOfIncidence = cos(dot(minRayResult.normal, lightReflectVector));
+				//dvec3 vecToCamera = fi.camPosition - minRayResult.position;
+				//double viewAngle = cos(dot(minRayResult.normal, vecToCamera));
+				//double diffuseReflectivity = (1.0 - (pow(mat.smoothness, 3.0))) * (1.0 - mat.transparency);
+				//double diffuseReflectivityMultiplier = (1.0 - (mat.metalness * mat.smoothness));
+				//double rn = (1.0 - mat.transparency) - diffuseReflectivity;
+				//double j = F(angleOfIncidence) * G(angleOfIncidence) * G(viewAngle);
+				//double adjsutedReflectivity = glm::min(1.0, rn + ((rn + kj) * j));
+				//double specularReflectivity = specular * adjsutedReflectivity;
+				//dvec3 specularColor = dvec3(1.0) + (mat.metalness * (1.0 - F(angleOfIncidence)) * (mat.kd - dvec3(1.0)));
+				//dvec3 specularContrib = specularReflectivity * specularColor;
+				//dvec3 diffuseContrib = diffuse * diffuseReflectivityMultiplier * diffuseReflectivity * mat.kd;
+				//colorResult += (diffuseContrib + specularContrib) * attenuation;
+
+
+
+
+				
 				dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal)- lightRay.direction);
 
 				//ambient += minRayResult.shape->mat.ka;
 
-				double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);/*^to the specular exponent*/
-				specular += (minRayResult.shape->mat.ks*light->color * spec) / attenuation;
+
+				dvec3 H = glm::normalize(lightRay.direction + ray.inverseDirection);
+				double spec = glm::pow(glm::max(0.0, glm::dot(minRayResult.normal, H)), minRayResult.shape->mat.ns);//to the specular exponent
+
+				//double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);//to the specular exponent
+				dvec3 specular = (light->color * spec) / attenuation;
 				double diff = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
-				diffuse += (minRayResult.shape->mat.kd*light->color * diff) / attenuation;
+				dvec3 diffuse = (minRayResult.shape->mat.kd*light->color * diff) / attenuation;
+
+				//colorResult += Kr * reflectionColor + (1 - Kr) * refractionColor;
+				lightColorResult += (diffuse + specular);
 
 			}
-		}
 
+		}
+		
+		colorResult =  (kr*lightColorResult) + ((1.0 - kr) * mat.transparency * transparentRayResult);
 		
 
 		//double kr = reflectance();//
 		// Schlick’s Approximation instead of fresnel's equation?x`
 		//fresnel(dir, hitNormal, isect.hitObject->ior, kr);
-		bool oddSecond = uint32_t(floor(fi.currentTime)) % 2 == 0;
+		//bool oddSecond = uint32_t(floor(fi.currentTime)) % 2 == 0;
 
-		colorResult = (ambient + diffuse + specular) * minRayResult.shape->getColor(minRayResult);
+		//colorResult = (ambient + diffuse + specular) * minRayResult.shape->getColor(minRayResult);
 		//colorResult = minRayResult.shape->getColor(minRayResult);
 		//colorResult = dvec3(minRayResult.uv, 0.0);
 		//colorResult = minRayResult.shape->getColor(minRayResult);
@@ -302,6 +392,7 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 //TODO: implement a global sphere for a global color
 int main()
 {
+
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -373,8 +464,11 @@ int main()
 	//shapes.push_back(new Sphere(dvec3(2, 0, 0), 0.5, materials.at("Polished Silver"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(0, 2, 0), 0.5, materials.at("Polished Silver"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(0, 0, 2), 0.5, materials.at("Polished Silver"), noMovement));
+	
 
-	shapes.push_back(new Biconvex(dvec3(0, 1, 0), dvec3(0.0, 0.0, 1.0), 2.0, 20.0, noMovement));
+	shapes.push_back(new Sphere(dvec3(0, 2, 0), 5.0, materials.at("Glass"), noMovement));
+
+	//shapes.push_back(new Biconvex(dvec3(0, 1, 0), dvec3(0.0, 0.0, 1.0), 2.0, 20.0, noMovement));
 
 	/*Vertex a(dvec3(-7.0, -3.0, -30.0), dvec2(0.0, 0.0));
 	Vertex b(dvec3(13.0, -3.0, -30.0), dvec2(1.0, 0.0));
@@ -386,8 +480,8 @@ int main()
 	Vertex c(dvec3(5.0, 0, 10.0), dvec2(1.0, 1.0));
 	Vertex d(dvec3(-5.0, 0, 10.0), dvec2(0.0, 1.0));
 
-	shapes.push_back(new Triangle(a, c, b, NULL));
-	shapes.push_back(new Triangle(a, d, c, NULL));
+	//shapes.push_back(new Triangle(a, c, b, NULL));
+	//shapes.push_back(new Triangle(a, d, c, NULL));
 
 	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, materials.at("Polished Silver"), noMovement));
 
@@ -458,6 +552,8 @@ int main()
 		//dmat4 view = glm::lookAt(eye, eye+cameraForward, cameraUp);
 		fi.view = glm::lookAt(eye, dvec3(0.0, 3.0, 0.0), cameraUp);
 
+
+		fi.camPosition = transformPos(eye, dmat4(1.0), fi.view);
 
 
 		//printf("===========\n");

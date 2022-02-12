@@ -53,14 +53,14 @@ struct Material {
 	dvec3 kd = dvec3(1.0, 1.0, 1.0);											
 	double ns = 100.0;//specular highlights exponent							
 	double ni = 1.0; //index of refraction									
-	double transparency  = 1.0;//transparency
+	double transparency  = 0.0;//transparency
 	double metalness = 0.7; //how shiny
 	double smoothness = 0.5;
 };
 unordered_map<string, Material> materials = {
 	{"Glass", Material(dvec3(1.0, 1.0, 1.0), 50.0, 1.54, 0.95, 0.5, 1.0)},
-	{"Copper", Material(dvec3(1.0, 0.0, 1.0), 1.0, 1.0, 0.0, 0.0, 0.0)},
-	{"Bug", Material(dvec3(0.7038,0.27048,0.0828), 50.0, 1.0, 0.0, 1.0, 0.9)}
+	{"Bug", Material(dvec3(1.0, 0.0, 1.0), 1.0, 1.0, 0.0, 0.0, 0.0)},
+	{"Copper", Material(dvec3(0.7038,0.27048,0.0828), 50.0, 1.0, 0.0, 0.5, 0.5)}
 
 };
 
