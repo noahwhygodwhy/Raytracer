@@ -14,10 +14,11 @@ public:
 	~Sphere();
 	bool rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double currentTime)const;
 	dvec3 getColor(const HitResult& hit)const;
-private:
 	double radius;
-	double r2;
 	dvec3 origin;
+	bool pointInSphere(const HitResult& hit, const dmat4& view, double currentTime);
+private:
+	double r2;
 };
 
 Sphere::Sphere(const dvec3& origin, double radius, const Material& mat, dmat4(*movementFunction)(double currentTime))
@@ -34,7 +35,14 @@ Sphere::~Sphere()
 {
 }
 
+bool Sphere::pointInSphere(const HitResult& hit, const dmat4& view, double currentTime) {
+	dvec3 transformedOrigin = transformPos(this->origin, this->getModel(currentTime), view);
 
+	double bias = 1e-4;
+	dvec3 biasedPoint = hit.position - (hit.normal * bias);
+	
+	return glm::distance(hit.position, transformedOrigin) <= this->radius;
+}
 dvec3 Sphere::getColor(const HitResult& hit) const {
 	//return glm::abs(hit.normal);
 	return vec3(1.0f, 1.0f, 1.0f);
@@ -45,7 +53,10 @@ bool Sphere::rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double cu
 
 	constexpr double epsilon = glm::epsilon<double>();
 	
-	dvec3 transOrigin = transformPos(this->origin, view, this->getModel(currentTime));
+
+	dmat4 currModel = this->getModel(currentTime);
+
+	dvec3 transOrigin = transformPos(this->origin, view, currModel);
 
 	/*dvec3 L = transOrigin - ray.origin;
 	double tca = glm::dot(L, ray.direction);
@@ -92,9 +103,13 @@ bool Sphere::rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double cu
 	}
 
 
-	hit.position = ray.origin + (ray.direction * dvec3(t0));
 	//hit.normal = transformNormal(glm::normalize(hit.position - transOrigin), this->model);
-	hit.normal = glm::normalize(hit.position - transOrigin);
+	hit.position = ray.origin + (ray.direction * t0);
+	//hit.normal = glm::normalize(hit.position - transOrigin);
+	hit.normal = transformNormal(glm::normalize(hit.position - transOrigin), currModel);
+	constexpr double spherepi = glm::pi<double>();
+	hit.uv = dvec2(std::atan2(hit.normal.x, hit.normal.z) / (2 * spherepi) + 0.5, hit.normal.y * 0.5 + 0.5);
+
 	hit.bary = dvec3(0.0);
 	hit.depth = t0;
 	hit.shape = (Sphere*)this;

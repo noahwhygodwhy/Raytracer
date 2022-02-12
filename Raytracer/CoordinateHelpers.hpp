@@ -13,8 +13,8 @@ dvec3 transformNormal(const dvec3& x, const dmat4& model) {
 }
 dvec3 transformPos(const dvec3& x, const dmat4& model, const dmat4& view) {
 	dmat4 mvp = view * model;
-	dvec4 newPos = mvp * dvec4(x, 1.0f);
-	return newPos / newPos.w;
+	dvec4 newPos = mvp * dvec4(x, 1.0);
+	return (newPos / newPos.w);
 }
 
 

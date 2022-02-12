@@ -13,6 +13,9 @@ dmat4 noMovement(double currentTime) {
 dmat4 oscilateX(double currentTime) {
 	return glm::translate(dmat4(1.0), dvec3(sin(currentTime) * 5.0, 0.0, 0.0));
 }
+dmat4 oscilateY(double currentTime) {
+	return glm::translate(dmat4(1.0), dvec3(0.0, sin(currentTime) * 5.0, 0.0));
+}
 
 
 

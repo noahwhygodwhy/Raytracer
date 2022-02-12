@@ -20,6 +20,9 @@ class Shape;
 struct HitResult {
 	dvec3 position;
 	dvec3 normal;
+	dvec3 tangent;
+	dvec3 bitangent;
+	dvec2 uv;
 	dvec3 bary;//only if it's a triangle does this get used
 	double depth;
 	Shape* shape;
@@ -60,7 +63,8 @@ enum Side {
 
 
 
-
+//TODO: make sure this is the same as 
+//https://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms
 #define DIMS 3
 //based on the fast ray-box intersection chapter by andrew woo from Graphics Gems
 //calculates hits between a ray and an axis aligned bounding box
@@ -92,11 +96,11 @@ bool Shape::rayAABB(const Ray& ray, const mat4& view) {
 	}
 	for (uint32_t i = 0; i < DIMS; i++)
 	{
-		if (sides[i] != MIDDLE && ray.direction[i] != 0.) {
+		if (sides[i] != MIDDLE && ray.direction[i] != 0.0) {
 			maxT[i] = (planes[i] - ray.origin[i]) / ray.direction[i];
 		}
 		else {
-			maxT[i] = -1.;
+			maxT[i] = -1.0;
 		}
 	}
 

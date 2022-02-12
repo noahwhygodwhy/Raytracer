@@ -6,6 +6,10 @@
 using namespace std;
 using namespace glm;
 
+
+
+constexpr double bigNumberButNotInfinity = 10000000000000.0;
+
 class DirectionalLight : public Light
 {
 public:
@@ -30,11 +34,19 @@ DirectionalLight::~DirectionalLight()
 }
 
 double DirectionalLight::getDistance(const dvec3& rayOrigin, const dmat4& view) const {
-	return 10000000000000.0;//cheating, but hey
+	return bigNumberButNotInfinity;
 }
 
 Ray DirectionalLight::getRay(const dvec3& rayOrigin, const dmat4& view) const {
-	return Ray(rayOrigin, this->reverseDirection);
+
+
+	//dvec3 alteredRayOrigin = transformPos(rayOrigin, mat4(1.0), view);
+
+	dvec3 alteredReverseDirection = view * dvec4(this->reverseDirection, 1.0f);
+
+	dvec3 transposition = transformPos(this->reverseDirection*bigNumberButNotInfinity, mat4(1), view);
+
+	return Ray(rayOrigin, glm::normalize(transposition - rayOrigin));
 }
 double DirectionalLight::getAttenuation(double distance)const {
 	return 1.0;

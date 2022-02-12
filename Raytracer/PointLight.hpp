@@ -43,13 +43,6 @@ PointLight::~PointLight()
 }*/
 double PointLight::getDistance(const dvec3& rayOrigin, const dmat4& view) const {
 	dvec3 transposition = transformPos(this->position, mat4(1), view);
-	/*printf("get distance 2 of light\nposition:%s\ntransposition: %s\nray origin: %s\ndistance2:%f\n",
-		glm::to_string(this->position).c_str(),
-		glm::to_string(transposition).c_str(),
-		glm::to_string(rayOrigin).c_str(),
-		glm::distance2(transposition, rayOrigin));*/
-	//return glm::length2(transposition - rayOrigin);
-
 	return glm::distance(transposition, rayOrigin);
 }
 
@@ -62,7 +55,7 @@ Ray PointLight::getRay(const dvec3& rayOrigin, const dmat4& view) const {
 double PointLight::getAttenuation(double distance)const {
 
 	//return (((this->constant / distance) + this->linear + (this->quadratic * distance)) * distance
-	return (this->constant + ((this->linear + (this->quadratic * distance)) * distance));
+	//return (this->constant + ((this->linear + (this->quadratic * distance)) * distance));
 	return (this->constant + (this->linear * distance) + (this->quadratic * (distance * distance)));
 }
 

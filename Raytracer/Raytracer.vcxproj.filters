@@ -22,6 +22,9 @@
     <Filter Include="Header Files\Lights">
       <UniqueIdentifier>{639547a9-c153-456c-83a6-a98865bb1ab9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Objects\lenses">
+      <UniqueIdentifier>{d36ee5a6-e005-4408-a799-937b211ac8cd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raytracer.cpp">
@@ -98,11 +101,11 @@
     <ClInclude Include="Animatable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Plane.hpp">
-      <Filter>Header Files\Objects</Filter>
-    </ClInclude>
     <ClInclude Include="CoordinateHelpers.hpp">
       <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Biconvex.hpp">
+      <Filter>Header Files\Objects\lenses</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
