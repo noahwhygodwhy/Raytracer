@@ -50,7 +50,7 @@ using namespace std::filesystem;
 using namespace glm;
 
 #define MAXBOUNCES 6u
-#define OUTPUTFRAMES 151
+//#define OUTPUTFRAMES 151
 #define CONCURRENT_FOR
 
 
@@ -452,13 +452,9 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 				dvec3 H = glm::normalize(lightRay.direction + ray.inverseDirection);
 				//double spec = glm::pow(glm::max(0.0, glm::dot(minRayResult.normal, H)), minRayResult.shape->mat.ns);//to the specular exponent
 				double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);//to the specular exponent
-				//if (prd)printf("specular: %f\n", spec);
 				dvec3 specular = (light->color * spec) / attenuation;
 				double diff = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
-				if(prd)printf("mat.kd: %s\n", glm::to_string(mat.kd).c_str());
 				dvec3 diffuse = (mat.kd*light->color * diff) / attenuation;
-				if (prd)printf("diff: %f\n", diff);
-				if (prd)printf("diffuse: %s\n", glm::to_string(diffuse).c_str());
 				lightColorResult += (diffuse + specular);
 
 
@@ -480,10 +476,6 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 
 			dvec3 refractionRayDir = getRefractionRay(glm::normalize(minRayResult.normal), glm::normalize(ray.direction), mat.ni, entering, internalOnly);
 
-			/*if (!internalOnly) {
-				kr = shlicksApprox()
-			}*/
-
 			if (prd) {
 				printf("ray dir:            %s\n", glm::to_string(ray.direction).c_str());
 				printf("refraction ray dir: %s\n", glm::to_string(refractionRayDir).c_str());
@@ -498,51 +490,19 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 			if (!internalOnly) {
 				kr = shlicksApprox(mat.ni, minRayResult.normal, ray.inverseDirection, entering);
 			}
-
-			//kr = reflectance(ray.inverseDirection, refractionRayDir, minRayResult.normal, mat.ni);
-			//printf("kr: %f\n", kr);
-
 			rayTrace(refractionRay, fi, transparentRayResult, transparentRayHit, mat.ni, layer + 1);
 
 			if (prd)printf("transparentRayResult: %s\n", glm::to_string(transparentRayResult).c_str());
 
-			/*colorResult = transparentRayResult;
-			if (transparentRayDidhit) {
-			}
-			else {
-				colorResult = dvec3(0.0, 1.0, 0.0);
-			}*/
-		}
-
 		
-		//printf("kr: %f\n");
-
-		//colorResult = ((1.0 - mat.transparency) * lightColorResult) + (mat.transparency * transparentRayResult);
-		//colorResult = lightColorResult;
+		}
 
 		if (prd) printf("\tkr: %f  ##############################################################################################################\n", kr);
 
-		//kr is how  much light is reflected, not transparent
-		//tarnsparency is how mcuh the light is transparent
-		double transKR = 1.0 - kr;
-		double transGen = mat.transparency;
-
-		double reflectionFactor = (kr * (1.0-mat.transparency));
-
-
-		colorResult = ((reflectionFactor) * lightColorResult) + ((1.0-reflectionFactor)*transparentRayResult);
+		
+		//TODO: this blending is not correct
+		colorResult = ((kr * (1.0-mat.transparency)) * lightColorResult) + ((1.0-(kr* (1.0 - mat.transparency)))*transparentRayResult);
 		//colorResult = ((1.0 - kr) * lightColorResult) + ((kr)*transparentRayResult);
-
-		/*if (glm::epsilonNotEqual(mat.transparency, 0.0, glm::epsilon<double>())) {
-			//printf("transparent ray hit anything\n");
-			colorResult = transparentRayResult;
-			//colorResult = ((1.0 - mat.transparency) * lightColorResult) + ((mat.transparency) * transparentRayResult);
-		}
-		else {
-			//printf("using the material color\n");
-			colorResult = lightColorResult;
-		}*/
-		//colorResult += (1.0-kr)* transparentRayResult;
 
 		return true;
 	}

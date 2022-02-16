@@ -58,7 +58,7 @@ struct Material {
 	double smoothness = 0.5;
 };
 unordered_map<string, Material> materials = {
-	{"Glass", Material(dvec3(1.0, 1.0, 1.0), 50.0, 1.54, 0.85, 0.5, 1.0)},
+	{"Glass", Material(dvec3(1.0, 1.0, 1.0), 50.0, 1.54, 0.7, 0.5, 1.0)},
 	{"Bug", Material(dvec3(1.0, 0.0, 1.0), 100.0, 1.0, 0.0, 0.0, 1.0)},
 	{"Copper", Material(dvec3(0.7038,0.27048,0.0828), 100.0, 1.0, 0.0, 0.5, 0.5)}
 
