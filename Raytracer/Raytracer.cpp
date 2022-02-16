@@ -30,6 +30,9 @@
 #include "Shader.hpp"
 //#include "Model.hpp"
 //#include "WorkerPool.hpp"
+
+#include "CoordinateHelpers.hpp"
+
 #include "Triangle.hpp"
 #include "Ray.hpp"
 #include "KDNode.hpp"
@@ -46,11 +49,12 @@ using namespace std;
 using namespace std::filesystem;
 using namespace glm;
 
-#define MAXBOUNCES 8
-//#define OUTPUTFRAMES 151
+#define MAXBOUNCES 6u
+#define OUTPUTFRAMES 151
 #define CONCURRENT_FOR
 
 
+bool prd = false; //print debuging for refraction
 
 uint32_t frameX = 1000;
 uint32_t frameY = 1000;
@@ -71,6 +75,8 @@ double deltaTime = 0.0f;	// Time between current frame and last frame
 double lastFrame = 0.0f; // Time of last frame
 string saveFileDirectory = "";
 
+
+constexpr double bias = 1e-3;
 
 struct FrameInfo {
 	vector<Shape*> shapes;
@@ -122,7 +128,6 @@ bool frontFacing(vec3 a, vec3 b, vec3 c) {
 
 
 
-
 //since it's not part of the assignment to write a function to save to image, i just copied this directly from
 //https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
 void saveImage(string filepath, GLFWwindow* w) {
@@ -136,38 +141,51 @@ void saveImage(string filepath, GLFWwindow* w) {
 	GLsizei bufferSize = stride * height;
 	std::vector<char> buffer(bufferSize);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
-	glReadBuffer(GL_FRONT);
-	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
-	stbi_flip_vertically_on_write(true);
-	stbi_write_png((outDir + filepath).c_str(), width, height, nrChannels, buffer.data(), stride);
+glReadBuffer(GL_FRONT);
+glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+stbi_flip_vertically_on_write(true);
+stbi_write_png((outDir + filepath).c_str(), width, height, nrChannels, buffer.data(), stride);
 }
 
 
-
+/*
+constexpr double freeSpaceImpedance = 376.730;
 //uses the fresnel equations to 
 //need to return two values if you want to take light polarization into account
-/*double reflectance(const dvec3& vectorI, const dvec3& vectorT, double z1, double z2, double prevIOR, double newIOR) {
+double reflectance(const dvec3& vectorI, const dvec3& vectorT, const dvec3& normal, double prevIOR, double newIOR) {
+
+	//printf("calculating reflectance\n");
+	double z1 = freeSpaceImpedance / prevIOR;
+	double z2 = freeSpaceImpedance / newIOR;
 
 
 
-
+	double cosI = glm::dot(vectorI, normal);
+	double cosT = glm::dot(vectorT, -normal);
 
 	//double costI = glm::cos(thetaI);
 	//double costT = glm::cos(thetaT);
 
-	double cosI = glm::clamp(-1.0, 1.0, glm::dot(vectorI, vectorT));
-
-	double cosT = 69.0;//TODO: not real
-	//etai is prior, etat is the one we're going into
-	if (cosI > 0) {
-		swap(prevIOR, newIOR);
-	}
-
-	//https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
-	//https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
+	//double cosI = glm::clamp(-1.0, 1.0, glm::dot(vectorI, vectorT));
 
 
-	double sinT = 0.0;//TODO:
+
+
+	//double cosT = 69.0;//TODO: not real
+	////etai is prior, etat is the one we're going into
+	//if (cosI > 0) {
+	//	swap(prevIOR, newIOR);
+	//}
+
+	////https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+	////https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
+
+
+	//double sinT = 0.0;//TODO:
+	
+
+	//printf("prevIOR: %f\n", prevIOR);
+	//printf("newIOR: %f\n", newIOR);
 
 	double z2CostI = z2 * cosI;
 	double z2CostT = z2 * cosT;
@@ -175,14 +193,30 @@ void saveImage(string filepath, GLFWwindow* w) {
 	double z1CostI = z1 * cosI;
 	double z1CostT = z1 * cosT;
 
-	double rS = glm::pow(glm::abs((z2CostI - z1CostT) / (z2CostI - z1CostT)), 2.0);
-	double rP = glm::pow(glm::abs((z2CostT - z1CostI) / (z2CostT - z1CostI)), 2.0);
+	//printf("z2CostI: %f\n", z2CostI);
+	//printf("z2CostT: %f\n", z2CostT);
+	//printf("z1CostI: %f\n", z1CostI);
+	//printf("z1CostT: %f\n", z1CostT);
+
+	double rS = glm::pow(glm::abs((z2CostI - z1CostT) / (z2CostI + z1CostT)), 2.0);
+	double rP = glm::pow(glm::abs((z2CostT - z1CostI) / (z2CostT + z1CostI)), 2.0);
+
+
+
 
 	return (rS + rP) / 2.0;
 }*/
 
 
-double shlicksApprox(double prevIOR, double newIOR, const vec3& normal, const vec3& viewVector) {
+double shlicksApprox(double matIOR, vec3 normal, const vec3& viewVector, bool entering) {
+
+	double prevIOR = 1.0;
+	double newIOR = matIOR;
+	if (!entering) {
+		normal = -normal;
+		swap(prevIOR, newIOR);
+	}
+
 	double r0 = glm::pow((prevIOR - newIOR) / (prevIOR + newIOR), 2.0);
 
 	double rTheta = r0 + ((1 - r0) * (1 - glm::acos(glm::dot(normal, viewVector))));
@@ -199,16 +233,148 @@ HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 	for (Shape* shape : fi.shapes) {
 		HitResult rayResult;
 		//if (shape->rayAABB(ray, view)) { //TODO:
-			if (shape->rayHit(ray, rayResult, fi.view, fi.currentTime)) {
-				if (rayResult.depth < minRayResult.depth) {
-					//printf("hit something\n");
-					minRayResult = rayResult;
-				}
+		if (shape->rayHit(ray, rayResult, fi.view, fi.currentTime)) {
+			if (rayResult.depth < minRayResult.depth) {
+				//printf("hit something\n");
+				minRayResult = rayResult;
 			}
+		}
 		//}
 	}
 	return minRayResult;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, bool entering, bool& internalOnly) {
+
+	if (prd)printf("\n\n=============================\n");
+
+	//TODO: this is where you reverse the normal if the dot of normal and incident vector is above a certain amount
+	double closeness = glm::dot(hitNormal, incidentVector);
+
+
+	double prevIOR = 1.0;
+	double newIOR = objectIOR;
+
+
+
+
+	if (!entering) {
+		if(prd)printf("reversing normal\n");
+		hitNormal = -hitNormal;
+		swap(prevIOR, newIOR);
+	}
+
+
+	if (prd)printf("hitNormal: %s\n", glm::to_string(hitNormal).c_str());
+	if (prd)printf("incidentVector: %s\n", glm::to_string(incidentVector).c_str());
+
+
+
+
+	//double cosA1 = glm::clamp(glm::dot(incidentVector, hitNormal), -1.0, 1.0);
+	double cosA1 = glm::dot(incidentVector, hitNormal);
+
+	if (prd)printf("cosAI: %f\n", cosA1);
+	if (prd)printf("A1 degrees: %f\n", degrees(acos(cosA1)));
+
+	double sinA1 = glm::sqrt(1.0 - (cosA1 * cosA1));
+
+	if (prd)printf("sinA1: %f\n", sinA1);
+
+	double IORRatio = prevIOR / newIOR;
+
+	if (prd)printf("IOR Ratio: %f\n", IORRatio);
+
+	double sinA2 = sinA1 * IORRatio;
+
+	if (prd)printf("sinA2: %f\n", sinA2);
+
+	dvec3 trueReflectDir = incidentVector;
+	if (sinA2 <= -1.0 || sinA2 >= 1.0) {//TODO this isn't handled correctly
+		if(prd)printf("totalInternal\n");
+		internalOnly = true;
+		return trueReflectDir;
+	}
+
+
+
+	double maxCloseness = -INFINITY;
+	double k1 = NAN;
+	double k2 = NAN;
+	solveQuadratic(1.0, 2.0*cosA1, 1.0-(1.0/(IORRatio * IORRatio)), k1, k2);
+	// for the solution that k that causes the new ray
+	//that has the smallest angle difference between it and the incident ray
+	if(prd)printf("k1: %f\n", k2);
+	if (k1 != NAN) {
+		if (prd)printf("doing something with k1\n");
+		dvec3 reflectDir1 = glm::normalize(incidentVector + (k1 * hitNormal));
+		if (prd)printf("new refract dir1: %s\n", glm::to_string(reflectDir1).c_str());
+		double closeness1 = glm::dot(incidentVector, reflectDir1);
+		if (prd)printf("angle of k2: %f\n", degrees(acos(glm::dot(-hitNormal, reflectDir1))));
+		if (prd)printf("closeness1: %f\n", closeness1);
+		if (closeness1 > maxCloseness && closeness1>=0.0) {
+			if (prd)printf("using this new refract dir\n");
+			maxCloseness = closeness1;
+			trueReflectDir = reflectDir1;
+		}
+	}
+	if (prd)printf("k2: %f\n", k2);
+	if (k2 != NAN) {
+		if (prd)printf("doing something with k2\n");
+		dvec3 reflectDir2 = glm::normalize(incidentVector + (k2 * hitNormal));
+		if (prd)printf("new refract dir2: %s\n", glm::to_string(reflectDir2).c_str());
+		double closeness2 = glm::dot(incidentVector, reflectDir2);
+		if (prd)printf("angle of k2: %f\n", degrees(acos(glm::dot(-hitNormal, reflectDir2))));
+		if (prd)printf("closeness2: %f\n", closeness2);
+		if (closeness2 > maxCloseness && closeness2>=0.0) {
+			if (prd)printf("using this new refract dir\n");
+			maxCloseness = closeness2;
+			trueReflectDir = reflectDir2;
+		}
+	}
+
+	if (maxCloseness <= 0.0) {
+		printf("error calculating refraction angle\n");
+		exit(-1);
+	}
+
+	double cosA2 = glm::sqrt(1.0 - (sinA2 * sinA2));
+
+	if (cosA1 < 0.0) {
+		cosA2 *= -1.0;
+	}
+	if (prd)printf("oldIOR:%f\n", prevIOR);
+	if (prd)printf("newIOR:%f\n", newIOR);
+
+	if (prd)printf("incidentVector: %s\n", glm::to_string(incidentVector).c_str());
+	if (prd)printf("trueReflectDir: %s\n", glm::to_string(glm::normalize(trueReflectDir)).c_str());
+
+
+
+	double incidentAngle = glm::acos(glm::dot(hitNormal, incidentVector));
+	double refractionAngle = glm::acos(glm::dot(-hitNormal, trueReflectDir));
+
+	if (prd)printf("old angle: %f\n", degrees(incidentAngle));
+	if (prd)printf("new angle: %f\n", degrees(refractionAngle));
+
+	return glm::normalize(trueReflectDir);
+}
+
+
+
+
 
 
 constexpr double kj = 0.1;//given in the paper
@@ -227,54 +393,37 @@ double G(double x) {
 	return num / denom;
 }
 
+
+
+
+
+
 bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult& minRayResult, double currentIOR = 1.0, uint32_t layer = 0)
 {
+	if(prd)printf("\n\n===========================\nnew ray trace %u\n", layer);
+
+
 
 	if (layer > MAXBOUNCES) {
+		printf("returning cause max bounces\n");
+		colorResult = clearColor;
 		return false;
 	}
 
-	
-	double bias = 1e-4;
 	colorResult = dvec3(0);
 	minRayResult = shootRay(ray, fi); //ray is in camera space
 	if (minRayResult.shape != NULL) {
-
-		//yeah honestly fuck this, do this instead? https://www.scratchapixel.com/lessons/3d-basic-rendering/global-illumination-path-tracing/global-illumination-path-tracing-practical-implementation
 		
-		
-		/*if (glm::epsilonNotEqual(minRayResult.shape->mat.opaqueness, 1.0, glm::epsilon<double>())) {
-			//TODO: do stuff for transparent reflective object
+
+		if(prd)printf("hit at point %s\n", glm::to_string(minRayResult.position).c_str());
+		bool debug = layer>0;
+		if (prd&& debug) {
+			for (uint32_t i = 0; i < layer; i++) {
+				printf(" ");
+			}
+			printf("|%u\n", layer);
+
 		}
-		else if (glm::epsilonNotEqual(minRayResult.shape->mat.metalness, 0.0, glm::epsilon<double>())) {
-
-			double roughness = 1.0 - minRayResult.shape->mat.metalness;
-
-
-			dvec3 reflectionColor = castRay(hitPoint, reflectionDirection, ..., depth + 1);
-			dvec3 refractionColor = castRay(hitPoint, refractionDirection, ..., depth + 1);
-			
-
-			double reflection = reflectance(ray.direction, minRayResult.normal, currentIOR, minRayResult.shape->mat.ni);
-			colorResult = (reflectionColor * reflection) + (refractionColor * (1.0 - reflection));
-
-
-			dvec3 colorFromReclection = dvec3(0.0);
-			dvec3 colorFromAlbedo = minRayResult.shape->mat.kd;
-
-
-
-			//TODO: do stuff for reflective object
-		}
-		else {
-			//TODO: do stuff for phong object
-		}*/
-
-
-
-		//dvec3 diffuse = dvec3(0.0);
-		//dvec3 specular = dvec3(0.0);
-		//dvec3 ambient = (clearColor * 0.1)* minRayResult.shape->mat.ka;//TODO this is wrong, like really, be bettter
 
 		Material mat = minRayResult.shape->mat;
 
@@ -283,107 +432,121 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 		bool entering = hitAngle < (glm::pi<double>() / 2.0);
 
 
-		HitResult transparentRayHit;
-		dvec3 transparentRayResult = clearColor;
-		if (mat.transparency > 0.0) {
-			//based on https://physics.stackexchange.com/questions/435512/snells-law-in-vector-form
-			dvec3 ncs = glm::cross(minRayResult.normal, ray.inverseDirection);
-			double inSqrt = 1.0-((glm::pow(currentIOR / mat.ni, 2.0) * glm::dot(ncs, ncs)));
-			dvec3 rightSide = minRayResult.normal * glm::sqrt(inSqrt);
-			dvec3 leftSide = (currentIOR / mat.ni) * glm::cross(minRayResult.normal, glm::cross(-minRayResult.normal, ray.inverseDirection));
-
-			dvec3 refractionRayDir = glm::normalize(leftSide - rightSide);
-			dvec3 refractionRayPos = minRayResult.position + (minRayResult.normal * (entering ? -1.0 : 1.0));
-
-			Ray refractionRay(refractionRayPos, refractionRayDir);
-
-			rayTrace(ray, fi, transparentRayResult, transparentRayHit, mat.ni, layer + 1);
-
-		}
 
 
+		//TODO: apparently i messedup something? http://cosinekitty.com/raytrace/chapter09_refraction.html
 
-
-		//colorResult += dvec3(0.05)*mat.kd;
 
 		dvec3 lightColorResult = dvec3(0.0);
-		double kr = shlicksApprox(currentIOR, mat.ni, minRayResult.normal, ray.inverseDirection);
+		//double kr = glm::clamp(shlicksApprox(currentIOR, mat.ni, minRayResult.normal, ray.inverseDirection), 0.0, 1.0);
 
 		//printf("kr: %f\n", kr);
 
 		for (Light* light : fi.lights) {
-
 			Ray lightRay = light->getRay(minRayResult.position+(minRayResult.normal*bias), fi.view);//should be in camera space
-
-			//printf("light ray origin: %s, direction: %s\n", glm::to_string(lightRay.origin).c_str(), glm::to_string(lightRay.direction).c_str());
-
 			HitResult lightRayResult = shootRay(lightRay, fi);
-
-
 			double lightDistance = light->getDistance(minRayResult.position, fi.view);
 			if (lightDistance < lightRayResult.depth) {//shawows
-
-
-
-				double attenuation = light->getAttenuation(lightDistance);
-
-				//bad attempt at porting strauss to the raytracer
-				//dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal) - lightRay.direction);
-				//double specular = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);//to the specular exponent
-				//double diffuse = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
-				//double attenuation = light->getAttenuation(lightDistance);
-				//double angleOfIncidence = cos(dot(minRayResult.normal, lightReflectVector));
-				//dvec3 vecToCamera = fi.camPosition - minRayResult.position;
-				//double viewAngle = cos(dot(minRayResult.normal, vecToCamera));
-				//double diffuseReflectivity = (1.0 - (pow(mat.smoothness, 3.0))) * (1.0 - mat.transparency);
-				//double diffuseReflectivityMultiplier = (1.0 - (mat.metalness * mat.smoothness));
-				//double rn = (1.0 - mat.transparency) - diffuseReflectivity;
-				//double j = F(angleOfIncidence) * G(angleOfIncidence) * G(viewAngle);
-				//double adjsutedReflectivity = glm::min(1.0, rn + ((rn + kj) * j));
-				//double specularReflectivity = specular * adjsutedReflectivity;
-				//dvec3 specularColor = dvec3(1.0) + (mat.metalness * (1.0 - F(angleOfIncidence)) * (mat.kd - dvec3(1.0)));
-				//dvec3 specularContrib = specularReflectivity * specularColor;
-				//dvec3 diffuseContrib = diffuse * diffuseReflectivityMultiplier * diffuseReflectivity * mat.kd;
-				//colorResult += (diffuseContrib + specularContrib) * attenuation;
-
-
-
-
-				
+				double attenuation = light->getAttenuation(lightDistance);	
 				dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal)- lightRay.direction);
-
-				//ambient += minRayResult.shape->mat.ka;
-
-
 				dvec3 H = glm::normalize(lightRay.direction + ray.inverseDirection);
-				double spec = glm::pow(glm::max(0.0, glm::dot(minRayResult.normal, H)), minRayResult.shape->mat.ns);//to the specular exponent
-
-				//double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);//to the specular exponent
+				//double spec = glm::pow(glm::max(0.0, glm::dot(minRayResult.normal, H)), minRayResult.shape->mat.ns);//to the specular exponent
+				double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, ray.inverseDirection)), minRayResult.shape->mat.ns);//to the specular exponent
+				//if (prd)printf("specular: %f\n", spec);
 				dvec3 specular = (light->color * spec) / attenuation;
 				double diff = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
-				dvec3 diffuse = (minRayResult.shape->mat.kd*light->color * diff) / attenuation;
-
-				//colorResult += Kr * reflectionColor + (1 - Kr) * refractionColor;
+				if(prd)printf("mat.kd: %s\n", glm::to_string(mat.kd).c_str());
+				dvec3 diffuse = (mat.kd*light->color * diff) / attenuation;
+				if (prd)printf("diff: %f\n", diff);
+				if (prd)printf("diffuse: %s\n", glm::to_string(diffuse).c_str());
 				lightColorResult += (diffuse + specular);
+
+
 
 			}
 
 		}
-		
-		colorResult =  (kr*lightColorResult) + ((1.0 - kr) * mat.transparency * transparentRayResult);
-		
 
-		//double kr = reflectance();//
-		// Schlick’s Approximation instead of fresnel's equation?x`
-		//fresnel(dir, hitNormal, isect.hitObject->ior, kr);
-		//bool oddSecond = uint32_t(floor(fi.currentTime)) % 2 == 0;
 
-		//colorResult = (ambient + diffuse + specular) * minRayResult.shape->getColor(minRayResult);
-		//colorResult = minRayResult.shape->getColor(minRayResult);
-		//colorResult = dvec3(minRayResult.uv, 0.0);
-		//colorResult = minRayResult.shape->getColor(minRayResult);
+		HitResult transparentRayHit;
+		dvec3 transparentRayResult = clearColor;
+		double kr = 1.0;
+
+		//bool transparentRayDidhit = false;
+
+		if (glm::epsilonNotEqual(mat.transparency, 0.0, glm::epsilon<double>())) {
+
+			bool internalOnly = false;
+
+			dvec3 refractionRayDir = getRefractionRay(glm::normalize(minRayResult.normal), glm::normalize(ray.direction), mat.ni, entering, internalOnly);
+
+			/*if (!internalOnly) {
+				kr = shlicksApprox()
+			}*/
+
+			if (prd) {
+				printf("ray dir:            %s\n", glm::to_string(ray.direction).c_str());
+				printf("refraction ray dir: %s\n", glm::to_string(refractionRayDir).c_str());
+			}
+
+
+			dvec3 refractionRayPos = minRayResult.position + (minRayResult.normal * (entering ? -1.0 : 1.0) * bias);
+
+			if(prd)printf("shooting refraction ray from               %s\n", glm::to_string(refractionRayPos).c_str());
+			if(prd)printf("which is different than the hit position  %s\n", glm::to_string(minRayResult.position).c_str());
+			Ray refractionRay(refractionRayPos, refractionRayDir);
+			if (!internalOnly) {
+				kr = shlicksApprox(mat.ni, minRayResult.normal, ray.inverseDirection, entering);
+			}
+
+			//kr = reflectance(ray.inverseDirection, refractionRayDir, minRayResult.normal, mat.ni);
+			//printf("kr: %f\n", kr);
+
+			rayTrace(refractionRay, fi, transparentRayResult, transparentRayHit, mat.ni, layer + 1);
+
+			if (prd)printf("transparentRayResult: %s\n", glm::to_string(transparentRayResult).c_str());
+
+			/*colorResult = transparentRayResult;
+			if (transparentRayDidhit) {
+			}
+			else {
+				colorResult = dvec3(0.0, 1.0, 0.0);
+			}*/
+		}
+
+		
+		//printf("kr: %f\n");
+
+		//colorResult = ((1.0 - mat.transparency) * lightColorResult) + (mat.transparency * transparentRayResult);
+		//colorResult = lightColorResult;
+
+		if (prd) printf("\tkr: %f  ##############################################################################################################\n", kr);
+
+		//kr is how  much light is reflected, not transparent
+		//tarnsparency is how mcuh the light is transparent
+		double transKR = 1.0 - kr;
+		double transGen = mat.transparency;
+
+		double reflectionFactor = (kr * (1.0-mat.transparency));
+
+
+		colorResult = ((reflectionFactor) * lightColorResult) + ((1.0-reflectionFactor)*transparentRayResult);
+		//colorResult = ((1.0 - kr) * lightColorResult) + ((kr)*transparentRayResult);
+
+		/*if (glm::epsilonNotEqual(mat.transparency, 0.0, glm::epsilon<double>())) {
+			//printf("transparent ray hit anything\n");
+			colorResult = transparentRayResult;
+			//colorResult = ((1.0 - mat.transparency) * lightColorResult) + ((mat.transparency) * transparentRayResult);
+		}
+		else {
+			//printf("using the material color\n");
+			colorResult = lightColorResult;
+		}*/
+		//colorResult += (1.0-kr)* transparentRayResult;
+
 		return true;
 	}
+	colorResult = clearColor;
 	return false;
 }
 
@@ -392,6 +555,35 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 //TODO: implement a global sphere for a global color
 int main()
 {
+
+	/*dvec3 n = dvec3(0.0, -1.0, 0.0);
+	dvec3 x = dvec3(1.0, 1.0, 0.0);
+	dvec3 y = dvec3(1.0, -0.1, 0.0);
+
+	printf("%f\n", glm::dot(n, x));
+	printf("%f\n", glm::dot(n, y));
+
+	exit(-1);*/
+
+
+
+
+	/*dvec3 normal = dvec3(0.0, 1.0, 0.0);
+	dvec3 incident = glm::normalize(dvec3(2.0, -1.0, 0.0));
+
+
+
+
+	dvec3 other = getRefractionRay(normal, incident, 1.0, 1.54);
+
+	double inAngle = glm::acos(glm::dot(-normal, incident));
+	double newangle = glm::acos(glm::dot(normal, other));
+
+	printf("inAngle: %f\n", degrees(inAngle));
+	printf("newangle: %f\n", degrees(newangle));
+
+	exit(-1);*/
+	
 
 	glfwInit();
 
@@ -458,15 +650,17 @@ int main()
 	//shapes.push_back(new Sphere(dvec3(2, 2, -2), 2, materials.at("Polished Silver"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(-2, 4, 2), 2.5, materials.at("Polished Silver"), noMovement));
 
-	
-	//four axis spheres
-	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 0.5, materials.at("Polished Silver"), noMovement));
-	//shapes.push_back(new Sphere(dvec3(2, 0, 0), 0.5, materials.at("Polished Silver"), noMovement));
-	//shapes.push_back(new Sphere(dvec3(0, 2, 0), 0.5, materials.at("Polished Silver"), noMovement));
-	//shapes.push_back(new Sphere(dvec3(0, 0, 2), 0.5, materials.at("Polished Silver"), noMovement));
-	
 
-	shapes.push_back(new Sphere(dvec3(0, 2, 0), 5.0, materials.at("Glass"), noMovement));
+
+	//shapes.push_back(new Biconvex(dvec3(0, 0, 0), dvec3(0.0, 0.0, 1.0), 1.0, 5.0, noMovement));
+
+	shapes.push_back(new Sphere(dvec3(0, 0, 0), 2.5, materials.at("Glass"), noMovement));
+	shapes.push_back(new Sphere(dvec3(0, 0, -5), 1, materials.at("Copper"), oscilateX));
+
+	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 2.5, materials.at("Glass"), noMovement));
+	//shapes.push_back(new Sphere(dvec3(0, 0, -5), 1, materials.at("Copper"), noMovement));
+	//shapes.push_back(new Sphere(dvec3(-5, 0, 0), 1, materials.at("Copper"), noMovement));
+	//shapes.push_back(new Sphere(dvec3(-4, -1, -4), 1, materials.at("Copper"), noMovement));
 
 	//shapes.push_back(new Biconvex(dvec3(0, 1, 0), dvec3(0.0, 0.0, 1.0), 2.0, 20.0, noMovement));
 
@@ -475,13 +669,13 @@ int main()
 	Vertex c(dvec3(13.0, -3.0, 10.0), dvec2(1.0, 1.0));
 	Vertex d(dvec3(-7.0, -3.0, 10.0), dvec2(0.0, 1.0));*/
 
-	Vertex a(dvec3(-5.0, 0, -10.0), dvec2(0.0, 0.0));
-	Vertex b(dvec3(5.0, 0, -10.0), dvec2(1.0, 0.0));
-	Vertex c(dvec3(5.0, 0, 10.0), dvec2(1.0, 1.0));
-	Vertex d(dvec3(-5.0, 0, 10.0), dvec2(0.0, 1.0));
+	Vertex a(dvec3(-5.0, -3, -10.0), dvec2(0.0, 0.0));
+	Vertex b(dvec3(5.0, -3, -10.0), dvec2(1.0, 0.0));
+	Vertex c(dvec3(5.0, -3, 10.0), dvec2(1.0, 1.0));
+	Vertex d(dvec3(-5.0, -3, 10.0), dvec2(0.0, 1.0));
 
-	//shapes.push_back(new Triangle(a, c, b, NULL));
-	//shapes.push_back(new Triangle(a, d, c, NULL));
+	shapes.push_back(new Triangle(a, c, b, NULL));
+	shapes.push_back(new Triangle(a, d, c, NULL));
 
 	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, materials.at("Polished Silver"), noMovement));
 
@@ -537,7 +731,6 @@ int main()
 		//((PointLight*)lights.at(0))->position = vec3(sin(currentFrame * 2.0f) * 20.0f, 5.0f, 0.0f);
 
 		constexpr double mypi = glm::pi<double>();
-		//dvec3 eye = vec3(-5.0, 0.0, 10);
 		clearBuffers();
 
 
@@ -547,10 +740,10 @@ int main()
 
 		dvec3 cameraUp = dvec3(0.0, 1.0, 0.0);
 
-		dvec3 eye = vec3(sin(currentFrame) * 10.0, 2.0, cos(currentFrame) * 10.0);
-		//dvec3 eye = vec3(0.0, 2.0, 10.0); 
+		//dvec3 eye = vec3(sin(currentFrame) * 7.0, 0.5, cos(currentFrame) * 7.0);
+		dvec3 eye = vec3(0.0, 0.0, 5.0); 
 		//dmat4 view = glm::lookAt(eye, eye+cameraForward, cameraUp);
-		fi.view = glm::lookAt(eye, dvec3(0.0, 3.0, 0.0), cameraUp);
+		fi.view = glm::lookAt(eye, dvec3(0.0, 0.0, 0.0), cameraUp);
 
 
 		fi.camPosition = transformPos(eye, dmat4(1.0), fi.view);
@@ -583,6 +776,9 @@ int main()
 			uint32_t x = i % frameX;
 			uint32_t y = i / frameX;
 
+			//prd = (x == 500 && y == 500);
+			
+
 			dvec2 uv(double(x) / double((frameX - 1.0)), double(y) / double((frameY - 1.0)));
 			dvec2 clipSpacePixelSize(dvec2(1.0 / double(frameX - 1.0), 1.0 / double(frameY - 1.0)));
 
@@ -603,6 +799,7 @@ int main()
 					dvec3 rayVector = lowerLeftCorner + (uv.x * horizontal) + (uv.y * vertical) + dvec3(offsetX, offsetY, 0.0);
 					dvec3 colorOut;
 
+
 					Ray initialRay(dvec3(0.0, 0.0, focal), glm::normalize(rayVector));
 					bool hit = rayTrace(initialRay, fi, colorOut, minRayResult, 1.0, 0);
 					if (hit) {
@@ -615,6 +812,9 @@ int main()
 				}
 			}
 			frameBuffer[x + (y * frameX)] = colorAcum / double(n * n);
+			if (prd) {
+				frameBuffer[x + (y * frameX)] = dvec3(1.0, 0.0, 1.0);
+			}
 #ifdef CONCURRENT_FOR
 		});
 #else 

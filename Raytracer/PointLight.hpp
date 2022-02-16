@@ -49,7 +49,7 @@ double PointLight::getDistance(const dvec3& rayOrigin, const dmat4& view) const 
 Ray PointLight::getRay(const dvec3& rayOrigin, const dmat4& view) const {
 	dvec3 transposition = transformPos(this->position, mat4(1), view);
 
-	return Ray(rayOrigin, glm::normalize(transposition -rayOrigin));
+	return Ray(rayOrigin, glm::normalize(transposition-rayOrigin));
 }
 
 double PointLight::getAttenuation(double distance)const {

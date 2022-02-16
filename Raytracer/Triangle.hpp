@@ -5,8 +5,10 @@
 #include "Shape.hpp"
 #include "Mesh.hpp"
 
-extern uint32_t frameX;
-extern uint32_t frameY;
+//extern uint32_t frameX;
+//extern uint32_t frameY;
+
+extern bool prd;
 
 
 
@@ -42,7 +44,7 @@ public:
 
 	Triangle(Vertex a, Vertex b, Vertex c, Mesh* m)
 		: Shape(AABB(glm::max(a.position, glm::max(b.position, c.position)), 
-			glm::min(a.position, glm::min(b.position, c.position))), Material()) 
+			glm::min(a.position, glm::min(b.position, c.position))), materials.at("Copper"))
 	{
 		this->mesh = m;
 		vertices[0] = a;
@@ -118,11 +120,13 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double 
 	}
 
 
-
 	hit.bary = dvec3(1.0f - (u + v), u, v);
 	hit.position = mat3x3(a, b, c) * hit.bary;
+
+	if (prd)printf("hit at %s\n",glm::to_string(hit.position).c_str());
+
 	hit.depth = glm::length(hit.position - ray.origin);
-	hit.normal = transformedNormal;
+	hit.normal = glm::normalize(transformedNormal);
 	hit.uv = mat3x2(this->vertices[0].texCoords, this->vertices[1].texCoords, this->vertices[2].texCoords)* hit.bary;
 	hit.shape = (Triangle*)this;
 

@@ -2,7 +2,12 @@
 #define SPHERE_H
 #include "Shape.hpp"
 #include "Animatable.hpp"
+#include "CoordinateHelpers.hpp"
 
+
+
+
+extern bool prd;
 
 using namespace std;
 using namespace glm;
@@ -55,8 +60,9 @@ bool Sphere::rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double cu
 	
 
 	dmat4 currModel = this->getModel(currentTime);
-
 	dvec3 transOrigin = transformPos(this->origin, view, currModel);
+
+	if (prd)printf("detecting ray %s, %s\n", glm::to_string(ray.origin).c_str(), glm::to_string(ray.direction).c_str());
 
 	/*dvec3 L = transOrigin - ray.origin;
 	double tca = glm::dot(L, ray.direction);
@@ -74,23 +80,33 @@ bool Sphere::rayHit(const Ray& ray, HitResult& hit, const dmat4& view, double cu
 	double c = glm::dot(L, L) - this->r2;
 	double t0, t1;
 
-	double discr = (b * b) - (4.0 * a * c);
-	if (discr < 0.0) { 
-		return false; 
-	}
-	else if (discr == 0.0) { 
-		t0 = t1 = -0.5 * b / a;
-	}
-	else {
-		double q = (b > 0.0) ?
-			-0.5 * (b + glm::sqrt(discr)) :
-			-0.5 * (b - glm::sqrt(discr));
-		t0 = q / a;
-		t1 = c / q;
-	}
+	//double discr = (b * b) - (4.0 * a * c);
+	//if (discr < 0.0) { 
+	//	return false; 
+	//}
+	//else if (discr == 0.0) { 
+	//	t0 = t1 = -0.5 * b / a;
+	//}
+	//else {
+	//	double q = (b > 0.0) ?
+	//		-0.5 * (b + glm::sqrt(discr)) :
+	//		-0.5 * (b - glm::sqrt(discr));
+	//	t0 = q / a;
+	//	t1 = c / q;
+	//}
 
 	//double c = L.dotProduct(L) - radius2;
 
+
+	solveQuadratic(a, b, c, t0, t1);
+
+	if(prd)printf("possible hit distanecs: %f, %f\n", t0, t1);
+
+
+
+	if (t0 == NAN && t1 == NAN) {
+		return false;
+	}
 
 	if (t0 > t1) {
 		swap(t0, t1);
