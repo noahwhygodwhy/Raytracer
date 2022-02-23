@@ -13,8 +13,8 @@ class PointLight : public Light
 public:
 	PointLight(const dvec3& position, const dvec3& color, const dvec3& attenuationVals);
 	~PointLight();
-	double getDistance(const dvec3& rayOrigin, const dmat4& view) const;
-	Ray getRay(const dvec3& rayOrigin, const dmat4& view) const;
+	double getDistance(const dvec3& rayOrigin) const;
+	Ray getRay(const dvec3& rayOrigin) const;
 	double getAttenuation(double distance)const;
 private:
 	dvec3 position; 
@@ -41,13 +41,13 @@ PointLight::~PointLight()
 /*vec3 PointLight::rayHit(vec3 rayOrigin, const mat4& view)const {
 
 }*/
-double PointLight::getDistance(const dvec3& rayOrigin, const dmat4& view) const {
-	dvec3 transposition = transformPos(this->position, mat4(1), view);
+double PointLight::getDistance(const dvec3& rayOrigin) const {
+	dvec3 transposition = transformPos(this->position, mat4(1));
 	return glm::distance(transposition, rayOrigin);
 }
 
-Ray PointLight::getRay(const dvec3& rayOrigin, const dmat4& view) const {
-	dvec3 transposition = transformPos(this->position, mat4(1), view);
+Ray PointLight::getRay(const dvec3& rayOrigin) const {
+	dvec3 transposition = transformPos(this->position, mat4(1));
 
 	return Ray(rayOrigin, glm::normalize(transposition-rayOrigin));
 }

@@ -1,23 +1,18 @@
 #ifndef ANIMATABLE_H
 #define ANIMATABLE_H
 
+
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 using namespace std;
 using namespace glm;
 
 
-dmat4 noMovement(double currentTime) {
-	return dmat4(1.0);
-}
+dmat4 noMovement(double currentTime);
 
-dmat4 oscilateX(double currentTime) {
-	return glm::translate(dmat4(1.0), dvec3(sin(currentTime) * 5.0, 0.0, 0.0));
-}
-dmat4 oscilateY(double currentTime) {
-	return glm::translate(dmat4(1.0), dvec3(0.0, sin(currentTime) * 5.0, 0.0));
-}
-
-
+dmat4 oscilateX(double currentTime);
+dmat4 oscilateY(double currentTime);
+dmat4 rotateY(double currentTime);
 
 class Animatable
 {
@@ -29,19 +24,6 @@ private:
 	dmat4 (*movementFunction)(double currentTime);//double being the current frame time in seconds
 
 };
-
-Animatable::Animatable(dmat4(*mf)(double currentTime))
-{
-	this->movementFunction = mf;
-}
-
-Animatable::~Animatable()
-{
-}
-
-dmat4 Animatable::getModel(double currentTime) const {
-	return this->movementFunction(currentTime);
-}
 
 
 
