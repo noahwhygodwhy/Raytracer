@@ -3,6 +3,12 @@
 using namespace glm;
 using namespace std;
 
+
+
+void AABB::rayAABB(const Ray& ray, dvec3& enter, dvec3& exit) {
+
+}
+
 Shape::Shape(AABB boundingBox, const Material& material, const dmat4& model)
 {
 	this->model = model;
@@ -20,7 +26,7 @@ Shape::~Shape()
 #define DIMS 3
 //based on the fast ray-box intersection chapter by andrew woo from Graphics Gems
 //calculates hits between a ray and an axis aligned bounding box
-bool Shape::rayAABB(const Ray& ray) {
+bool Shape::rayAABB(const Ray& ray) const {
 	//	printf("you still need to make it adjust for the transform mats");
 	//	exit(0);
 	Side sides[DIMS]; //quadrants

@@ -84,6 +84,9 @@
     <ClCompile Include="CoordinateHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="KDTree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -101,7 +104,7 @@
     <ClInclude Include="Ray.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="KDNode.hpp">
+    <ClInclude Include="KDTree.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="glad.h">

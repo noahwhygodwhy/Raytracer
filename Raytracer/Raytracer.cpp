@@ -41,7 +41,7 @@
 
 #include "Triangle.hpp"
 #include "Ray.hpp"
-#include "KDNode.hpp"
+#include "KDTree.hpp"
 #include "Shape.hpp"
 #include "Sphere.hpp"
 #include "Biconvex.hpp"
@@ -57,7 +57,7 @@ using namespace std::filesystem;
 using namespace glm;
 
 #define MAXBOUNCES 6u
-//#define OUTPUTFRAMES 1//51
+#define OUTPUTFRAMES 1//51
 #define CONCURRENT_FOR
 
 
@@ -89,6 +89,7 @@ constexpr double bias = 1e-2;
 struct FrameInfo {
 	vector<Shape*> shapes;
 	vector<Light*> lights;
+	KDNode* kdTree;
 	//dmat4 view;
 	dvec3 camPosition;
 	double currentTime;
@@ -237,7 +238,11 @@ HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 	minRayResult.depth = INFINITY;
 
 	//TODO: navigate octtree instead
-	for (Shape* shape : fi.shapes) {
+#ifdef KDTRACE
+	
+#else
+	rayHitListOfShapes(fi.shapes, ray, minRayResult, fi.currentTime);
+	/*for (Shape* shape : fi.shapes) {
 		HitResult rayResult;
 		if (shape->rayAABB(ray)) { //TODO:
 			if (shape->rayHit(ray, rayResult, fi.currentTime)) {
@@ -247,7 +252,8 @@ HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 				}
 			}
 		}
-	}
+	}*/
+#endif
 	return minRayResult;
 }
 
@@ -416,7 +422,7 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 			HitResult lightRayResult = shootRay(lightRay, fi);
 			double lightDistance = light->getDistance(minRayResult.position);
 			if (lightDistance < lightRayResult.depth) {//shawows
-				double attenuation = light->getAttenuation(lightDistance);	
+				double attenuation = light->getAttenuation(lightDistance);
 				dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal)- lightRay.direction);
 				dvec3 H = glm::normalize(lightRay.direction + ray.inverseDirection);
 				//double spec = glm::pow(glm::max(0.0, glm::dot(minRayResult.normal, H)), minRayResult.shape->mat.ns);//to the specular exponent
@@ -426,9 +432,6 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 				dvec3 diffuse = (mat.getColor(minRayResult.uv) * light->color * diff) / attenuation;
 				//dvec3 diffuse = (dvec3(0.0, 0.0, 1.0) * light->color * diff) / attenuation;
 				lightColorResult += (diffuse + specular);
-
-
-
 			}
 
 		}
@@ -478,6 +481,16 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 void addModel(vector<Shape*>& shapes, string modelName) {
 	Model m(modelName);
 	shapes.insert(shapes.end(), m.children.begin(), m.children.end());
+}
+
+
+AABB redoAABBs(FrameInfo& fi) {
+	AABB toReturn(dvec3(0.0), dvec3(0.0));
+	for (Shape* s : fi.shapes) {
+		s->redoAABB(fi.currentTime);
+		toReturn.encompass(s->boundingBox);
+	}
+	return toReturn;
 }
 
 
@@ -559,10 +572,6 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 
-	int frameCounter = -1;
-	float frameTimes[30](0);
-	int lastSecondFrameCount = -1;
-
 	vector<Shape*> shapes;
 
 	
@@ -608,8 +617,13 @@ int main()
 	fi.currentTime = 0;
 	fi.shapes = shapes;
 	fi.lights = lights;
+	fi.kdTree = NULL;
 
 
+
+	int frameCounter = -1;
+	float frameTimes[30](0);
+	int lastSecondFrameCount = -1;
 
 	uint32_t fps = 24;
 #ifdef OUTPUTFRAMES
@@ -627,56 +641,45 @@ int main()
 	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES; frameCounter++) {
 		double currentFrame = double(frameCounter) / double(fps);
 #else
+
+
+
 	while (!glfwWindowShouldClose(window)) {
 		double currentFrame = glfwGetTime();
 #endif
-		//printf("working frame %i\n", frameCounter);
+
+		frameCounter++;
+
 
 		fi.currentTime = currentFrame;
 		deltaTime = currentFrame - lastFrame;
+		printf("that frame took %f seconds", deltaTime);
 		lastFrame = currentFrame;
 
-		//((PointLight*)lights.at(0))->position = vec3(sin(currentFrame * 2.0f) * 20.0f, 5.0f, 0.0f);
+		if (int(currentFrame) > lastSecondFrameCount) {
+			lastSecondFrameCount = int(currentFrame);
+			float sum = 0;
+			for (float f : frameTimes) {
+				sum += f;
+			}
+			printf("fps: %f\n", sum / 30.0f);
+		}
+		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-
-		//dvec3 cameraForward = dvec3(sin(currentFrame), 0.0, cos(currentFrame));
-		//dvec3 cameraForward = dvec3(0.0, 0.0, -1.0);
-
-
-		//dvec3 cameraUp = dvec3(0.0, 1.0, 0.0);
-
 		dvec3 eye = vec3(sin(currentFrame) * 10.0, 0.1, cos(currentFrame)*10.0);
-		//dvec3 eye = vec3(0.0, 2.0, 5.0); 
-
 		dvec3 lookat = vec3(0.0, 0.0, 0.0);
-
 		dvec3 camForward = glm::normalize(lookat - eye);
 		dvec3 camUp = glm::normalize(vec3(0.0, 1.0, 0.0));
 		dvec3 camRight = glm::cross(camForward, camUp);
 		camUp = glm::cross(camRight, camForward);
-		//camUp = glm::cross(camRight)
-		//dmat4 view = glm::lookAtRH(eye, lookat, camUp);
 
-		//dvec3 camForward = glm::normalize(vec3(sin(currentFrame), -0.5, cos(currentFrame));
-		//dmat4 view = glm::lookAt(eye, eye+cameraForward, cameraUp);
-		//fi.view = glm::lookAt(eye, dvec3(0.0, 0.0, 0.0), cameraUp);
+		fi.camPosition = eye;
 
-
-		fi.camPosition = eye;// transformPos(eye, dmat4(1.0), fi.view);
-
-
-		//printf("===========\n");
-		//printf("reveye: %s\n", glm::to_string(glm::normalize(-eye)).c_str());
-		//printf("light reversedir: %s\n", glm::to_string(((DirectionalLight*)lights.at(0))->getRay(vec3(0), fi.view).direction).c_str());
-
-
-
-		for (Shape* s : shapes) {
-			s->redoAABB(fi.currentTime);
-		}
+		AABB sceneBounding = redoAABBs(fi);
+		fi.kdTree = buildKDTree(fi.shapes, sceneBounding);
 
 		double viewPortHeight = 2.0f;
 		double viewPortWidth = viewPortHeight * frameRatio;
@@ -684,14 +687,14 @@ int main()
 		double fov = 90;
 		//printf("current frame: %f\n", fov);
 		double focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
-		dvec3 horizontal = dvec3(viewPortWidth, 0, 0);
-		dvec3 vertical = dvec3(0, viewPortHeight, 0);
+		/*dvec3 horizontal = dvec3(viewPortWidth, 0, 0);
+		dvec3 vertical = dvec3(0, viewPortHeight, 0);*/
 
 
 
 
 		//dvec2 hv(viewPortWidth, viewPortHeight);
-		dvec3 origin(0);
+		/*dvec3 origin(0);
 		dvec3 lowerLeftCorner = origin - (horizontal / 2.0) - (vertical / 2.0) - dvec3(0, 0, focal);
 		
 
@@ -701,19 +704,15 @@ int main()
 
 
 
-		printf("crossV: %s\n", glm::to_string(crossV).c_str());
 		double losangle = acos(glm::dot(originalVector, desiredVector) / (glm::length(originalVector) * glm::length(desiredVector)));
 
-		//losangle = 0;
-		dmat4 rotMat = glm::rotate(losangle, crossV);
+		dmat4 rotMat = glm::rotate(losangle, crossV);*/
 
-
-		qua rotQuat = glm::rotation(originalVector, desiredVector);
+		qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
 
 
 
 
-		printf("focal: %f\n", focal);
 		//printf("rotmat: %s\n", glm::to_string(rotMat).c_str());
 
 #ifdef CONCURRENT_FOR
@@ -803,7 +802,7 @@ int main()
 #ifdef OUTPUTFRAMES
 		saveImage((std::to_string(frameCounter) + ".png"), window);
 #endif
-		cin.get();
+		//cin.get();
 
 	}
 	//pool.stop();

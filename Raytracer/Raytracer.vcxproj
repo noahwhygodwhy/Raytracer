@@ -147,6 +147,7 @@
     <ClCompile Include="Biconvex.cpp" />
     <ClCompile Include="CoordinateHelpers.cpp" />
     <ClCompile Include="glad.c" />
+    <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Model.hpp" />
@@ -170,7 +171,7 @@
     <ClInclude Include="CoordinateHelpers.hpp" />
     <ClInclude Include="DirectionalLight.hpp" />
     <ClInclude Include="glad.h" />
-    <ClInclude Include="KDNode.hpp" />
+    <ClInclude Include="KDTree.hpp" />
     <ClInclude Include="Light.hpp" />
     <ClInclude Include="Material.hpp" />
     <ClInclude Include="PointLight.hpp" />
