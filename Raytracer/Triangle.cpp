@@ -10,9 +10,9 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 
 	//TODO: should really be done every frame, not every frame*ray
 	constexpr double epsilon = glm::epsilon<double>();
-	dvec3 a = transformPos(this->vertices[0].position, dmat4(1.0));
-	dvec3 b = transformPos(this->vertices[1].position, dmat4(1.0));
-	dvec3 c = transformPos(this->vertices[2].position, dmat4(1.0));
+	dvec3 a = this->vertices[0].position;
+	dvec3 b = this->vertices[1].position;
+	dvec3 c = this->vertices[2].position;
 
 	dvec3 E1 = b - a;
 	dvec3 E2 = c - a;
@@ -20,7 +20,7 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 	dvec3 pvec = glm::cross(ray.direction, E2);
 	double determinant = glm::dot(E1, pvec);
 
-	if (determinant < epsilon) {//TODO: i fucked something up
+	if (determinant < 0.0) {//TODO: i fucked something up
 		return false;
 	}
 
@@ -43,26 +43,15 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 
 
 	hit.bary = dvec3(1.0f - (u + v), u, v);
-	hit.position = mat3x3(a, b, c) * hit.bary;
-
-	if (prd)printf("hit at %s\n", glm::to_string(hit.position).c_str());
-
-	hit.depth = glm::length(hit.position - ray.origin);
-	//hit.normal = glm::normalize(transformedNormal);
+	hit.position = (a * hit.bary.x) + (b * hit.bary.y) + (c * hit.bary.z);
 
 
-
+	hit.depth = glm::distance(hit.position, ray.origin);
 
 	dvec3 badNormal = (this->vertices[0].normal * hit.bary.x) + (this->vertices[1].normal * hit.bary.y) + (this->vertices[2].normal * hit.bary.z);
 
-	if (prd)printf("vert 1 normal: %s\n", glm::to_string(this->vertices[0].normal).c_str());
-	if (prd)printf("vert 2 normal: %s\n", glm::to_string(this->vertices[1].normal).c_str());
-	if (prd)printf("vert 3 normal: %s\n", glm::to_string(this->vertices[2].normal).c_str());
-	if (prd)printf("bary: %s\n", glm::to_string(hit.bary).c_str());
 
-
-	hit.normal = transformNormal(badNormal, model);
-	if (prd)printf("normal: %s\n", glm::to_string(hit.normal).c_str());
+	hit.normal = badNormal;// transformNormal(badNormal, model);
 
 	//hit.normal = transformNormal(badNormal, dmat4(1.0));
 
@@ -78,12 +67,12 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 	return true;
 }
 void Triangle::redoAABB(double currentTime) {
-
 	//TODO: at some point in the future this needs to take something into account
 
-	dvec3 a = transformPos(this->vertices[0].position, dmat4(1.0));
-	dvec3 b = transformPos(this->vertices[1].position, dmat4(1.0));
-	dvec3 c = transformPos(this->vertices[2].position, dmat4(1.0));
-
-	this->boundingBox = AABB(glm::min(a, glm::min(b, c)), glm::max(a, glm::max(b, c)));
+	dvec3 a = this->vertices[0].position;
+	dvec3 b = this->vertices[1].position;
+	dvec3 c = this->vertices[2].position;
+	dvec3 minB = glm::min(a, glm::min(b, c));// -dvec3(glm::epsilon<double>());
+	dvec3 maxB = glm::max(a, glm::max(b, c));// +dvec3(glm::epsilon<double>());
+	this->boundingBox = AABB(minB, maxB);
 }

@@ -6,6 +6,7 @@
 #include "Shape.hpp"
 
 
+
 using namespace std;
 using namespace glm;
 
@@ -19,7 +20,7 @@ enum Axis {
 class KDNode
 {
 public:
-	KDNode();
+	KDNode(bool isLeaf);
 	~KDNode();
 	bool isLeaf;
 private:
@@ -52,9 +53,10 @@ public:
 private:
 
 };
+void printKDTree(KDNode* b, int layer = 0);
 
-KDNode* buildKDTree(vector<Shape*> shapes, AABB box, Axis axis = X);
-void traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double currentTIme);
-void rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& hit, double currentTIme);
+KDNode* buildKDTree(vector<Shape*> shapes, AABB box, Axis axis = X, int recusionWithoutChange = 0, int layer = 0);
+bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double currentTIme, int layer = 0);
+bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& hit, double currentTIme);
 
 #endif

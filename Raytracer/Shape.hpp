@@ -1,6 +1,7 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
+#include <optional>
 #include <glm/glm.hpp>
 #include "Ray.hpp"
 #include "Material.hpp"
@@ -26,7 +27,8 @@ struct AABB {
 		this->max = glm::max(this->max, other.max);
 		this->min = glm::min(this->min, other.min);
 	}
-	void rayAABB(const Ray& ray, dvec3& enter, dvec3& exit);
+	bool rayAABB(const Ray& ray, optional<dvec3>& enter, optional<dvec3>& exit)const;
+	bool rayAABB(const Ray& ray)const;
 };
 
 class Shape;

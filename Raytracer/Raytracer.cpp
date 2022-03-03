@@ -57,14 +57,17 @@ using namespace std::filesystem;
 using namespace glm;
 
 #define MAXBOUNCES 6u
-#define OUTPUTFRAMES 1//51
+//#define OUTPUTFRAMES 151
 #define CONCURRENT_FOR
+#define KDTRACE
+//#define CIN
+#define LIGHTING
 
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 500;
-uint32_t frameY = 500;
+uint32_t frameX = 1000;
+uint32_t frameY = 1000;
 double frameRatio = double(frameX) / double(frameY);
 
 //dvec2 pixelOffset = vec2(0.5 / float(frameX), 0.5 / float(frameY));
@@ -83,7 +86,7 @@ double lastFrame = 0.0f; // Time of last frame
 string saveFileDirectory = "";
 
 
-constexpr double bias = 1e-2;
+constexpr double bias = 1e-4;
 
 
 struct FrameInfo {
@@ -239,7 +242,7 @@ HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 
 	//TODO: navigate octtree instead
 #ifdef KDTRACE
-	
+	traverseKDTree(fi.kdTree, ray, minRayResult, fi.currentTime);
 #else
 	rayHitListOfShapes(fi.shapes, ray, minRayResult, fi.currentTime);
 	/*for (Shape* shape : fi.shapes) {
@@ -374,11 +377,11 @@ double G(double x) {
 
 bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult& minRayResult, double currentIOR = 1.0, uint32_t layer = 0)
 {
-	if(prd)printf("\n\n===========================\nnew ray trace %u\n", layer);
 
 
 
 	if (layer > MAXBOUNCES) {
+		//printf("returning cause max bounces\n");
 		//printf("returning cause max bounces\n");
 		colorResult = clearColor;
 		return false;
@@ -389,16 +392,7 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 	if (minRayResult.shape != NULL) {
 		
 
-		if(prd)printf("if more than one, went with %s\n", glm::to_string(minRayResult.position).c_str());
-		bool debug = layer>0;
-		if (prd&& debug) {
-			for (uint32_t i = 0; i < layer; i++) {
-				printf(" ");
-			}
-			printf("|%u\n", layer);
-
-		}
-
+		
 		Material mat = minRayResult.shape->mat;
 
 		double hitAngle = glm::acos(glm::dot(minRayResult.normal, ray.inverseDirection));
@@ -418,7 +412,7 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 
 		for (Light* light : fi.lights) {
 			Ray lightRay = light->getRay(minRayResult.position+(minRayResult.normal*bias));//should be in camera space
-			if(prd)printf("light ray: %s from %s\n", glm::to_string(lightRay.direction).c_str(), glm::to_string(lightRay.origin).c_str());
+
 			HitResult lightRayResult = shootRay(lightRay, fi);
 			double lightDistance = light->getDistance(minRayResult.position);
 			if (lightDistance < lightRayResult.depth) {//shawows
@@ -464,9 +458,14 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 		
 		//TODO: this blending is not correct
 		double trans = mat.getTransparency(minRayResult.uv);
-		//colorResult = ((1.0- trans) * mat.getColor(minRayResult.uv)) + ((1.0-(1.0 - trans))*transparentRayResult);
+
+#ifdef LIGHTING
 		colorResult = ((1.0 - trans) * lightColorResult) + ((1.0 - (1.0 - trans)) * transparentRayResult);
-		//colorResult = ((1.0 - kr) * lightColorResult) + ((kr)*transparentRayResult);
+#else
+		colorResult = ((1.0- trans) * mat.getColor(minRayResult.uv)) + ((1.0-(1.0 - trans))*transparentRayResult);
+#endif
+		//colorResult = ((1.0 - trans) * dvec3(minRayResult.depth/10.0)) + ((1.0 - (1.0 - trans)) * transparentRayResult);
+
 
 		return true;
 	}
@@ -478,8 +477,8 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 
 
 
-void addModel(vector<Shape*>& shapes, string modelName) {
-	Model m(modelName);
+void addModel(vector<Shape*>& shapes, string modelName, dvec3 pos = dvec3(0.0)) {
+	Model m(modelName, pos);
 	shapes.insert(shapes.end(), m.children.begin(), m.children.end());
 }
 
@@ -560,6 +559,7 @@ int main()
 	shader.use();
 
 	//make framebuffers
+
 	frameBuffer = new vec3[frameX * frameY]();
 
 	//initialize textured that the framebuffer gets written to display it on a triangle
@@ -594,8 +594,11 @@ int main()
 	//shapes.push_back(new Triangle(a, d, c, checkers));
 
 
-	addModel(shapes, "backpack");
-	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, materials.at("Polished Silver"), noMovement));
+	//addModel(shapes, "brick2");
+	addModel(shapes, "bunny");
+	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, Material("Bug"), noMovement));
+	//shapes.push_back(new Sphere(dvec3(1, 1, -3), 1.0, Material("PlainWhiteTees"), noMovement));
+	//shapes.push_back(new Sphere(dvec3(-1, -1, 3), 1.0, Material("PlainWhiteTees"), noMovement));
 
 	vector<Light*> lights;
 
@@ -620,6 +623,12 @@ int main()
 	fi.kdTree = NULL;
 
 
+	AABB sceneBounding = redoAABBs(fi);
+	printf("scene bounding min: %s, max:%s\n", glm::to_string(sceneBounding.min).c_str(), glm::to_string(sceneBounding.max).c_str());
+	fi.kdTree = buildKDTree(fi.shapes, sceneBounding);
+
+	//printKDTree(fi.kdTree);
+
 
 	int frameCounter = -1;
 	float frameTimes[30](0);
@@ -638,7 +647,7 @@ int main()
 	printf("about to create directory: %s\n", saveFileDirectory.c_str());
 	filesystem::create_directory(("out/"+saveFileDirectory).c_str());
 
-	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES; frameCounter++) {
+	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES;) {
 		double currentFrame = double(frameCounter) / double(fps);
 #else
 
@@ -653,7 +662,7 @@ int main()
 
 		fi.currentTime = currentFrame;
 		deltaTime = currentFrame - lastFrame;
-		printf("that frame took %f seconds", deltaTime);
+		//printf("that frame took %f seconds\n", deltaTime);
 		lastFrame = currentFrame;
 
 		if (int(currentFrame) > lastSecondFrameCount) {
@@ -662,14 +671,16 @@ int main()
 			for (float f : frameTimes) {
 				sum += f;
 			}
-			printf("fps: %f\n", sum / 30.0f);
+			printf("fps: %u\n", uint32_t(sum / 30.0f));
 		}
+		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-		dvec3 eye = vec3(sin(currentFrame) * 10.0, 0.1, cos(currentFrame)*10.0);
+		dvec3 eye = vec3(sin(currentFrame) * 15.0, 0, cos(currentFrame) * 15.0);
+		//dvec3 eye = dvec3(0.0, 0.0, 15.0);
 		dvec3 lookat = vec3(0.0, 0.0, 0.0);
 		dvec3 camForward = glm::normalize(lookat - eye);
 		dvec3 camUp = glm::normalize(vec3(0.0, 1.0, 0.0));
@@ -678,42 +689,17 @@ int main()
 
 		fi.camPosition = eye;
 
-		AABB sceneBounding = redoAABBs(fi);
-		fi.kdTree = buildKDTree(fi.shapes, sceneBounding);
 
 		double viewPortHeight = 2.0f;
 		double viewPortWidth = viewPortHeight * frameRatio;
 
 		double fov = 90;
-		//printf("current frame: %f\n", fov);
 		double focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
-		/*dvec3 horizontal = dvec3(viewPortWidth, 0, 0);
-		dvec3 vertical = dvec3(0, viewPortHeight, 0);*/
-
-
-
-
-		//dvec2 hv(viewPortWidth, viewPortHeight);
-		/*dvec3 origin(0);
-		dvec3 lowerLeftCorner = origin - (horizontal / 2.0) - (vertical / 2.0) - dvec3(0, 0, focal);
-		
-
-		dvec3 desiredVector = camForward;
-		dvec3 originalVector = dvec3(0.0, 0.0, -1.0); // in my case (1, 0, 0)
-		dvec3 crossV = glm::normalize(cross(originalVector, desiredVector));
-
-
-
-		double losangle = acos(glm::dot(originalVector, desiredVector) / (glm::length(originalVector) * glm::length(desiredVector)));
-
-		dmat4 rotMat = glm::rotate(losangle, crossV);*/
-
 		qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
 
 
 
 
-		//printf("rotmat: %s\n", glm::to_string(rotMat).c_str());
 
 #ifdef CONCURRENT_FOR
 		concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
@@ -723,7 +709,7 @@ int main()
 			uint32_t x = i % frameX;
 			uint32_t y = i / frameX;
 
-			//prd = (x == 220 && y == 175) && false;
+			//prd =(x == 250 && y == 250);
 			
 
 
@@ -731,44 +717,23 @@ int main()
 			double normalizedY = (double(y) / double(frameY)) -0.5;
 
 			dvec3 coordOnScreen = (normalizedX * camRight) + (normalizedY * camUp) + eye + (camForward*focal);
-
-
-			//dvec2 uv(double(x) / double((frameX - 1.0)), double(y) / double((frameY - 1.0)));
 			dvec2 clipSpacePixelSize(dvec2(1.0 / double(frameX - 1.0), 1.0 / double(frameY - 1.0)));
 
 			//multisample n*n
 			uint32_t n = 1;
 			dvec3 colorAcum(0);
 
-			//dvec2 pixelBottomLeft = ((uv.x * horizontal) + (uv.y * vertical)).xy - (clipSpacePixelSize / 2.0);
-
-
 			HitResult minRayResult;//TODO: use this for drawing the lines if you want to do that at some point
 								   //TODO: change the multisampling to do a few circles instead of a square? or does it really matter, idk
-
-
-			//printf("angle: %f\n", losangle);
 
 			for (uint32_t x = 1; x <= n; x++) {
 				double offsetX = x * (clipSpacePixelSize.x / (n + 1));
 				for (uint32_t y = 1; y <= n; y++) {
 					double offsetY = y * (clipSpacePixelSize.y / (n + 1));
 
-
-
 					dvec3 rayVector = glm::normalize((coordOnScreen + dvec3(offsetX, offsetY, 0.0))-eye);
-
-					//rayVector = transforms(rayVector, view);
-					//dvec4 irv = view * vec4(rayVector, 1.0);
-					//rayVector = dvec3(irv.x, irv.y, irv.z) / irv.w;
 					dvec3 colorOut;
 
-					//printf("rayVector before: %s, and after: ", glm::to_string(rayVector).c_str());
-
-					//rayVector = (rotMat * vec4(rayVector, 1.0)).xyz;
-					//rayVector = rotate(rotQuat, rayVector);
-
-					//printf("%s\n", glm::to_string(rayVector).c_str());
 					Ray initialRay(eye, rayVector);
 					bool hit = rayTrace(initialRay, fi, colorOut, minRayResult, 1.0, 0);
 					if (hit) {
@@ -781,7 +746,8 @@ int main()
 				}
 			}
 			frameBuffer[x + (y * frameX)] = colorAcum / double(n * n);
-			if (prd) {
+
+			if ((x == 320 && y == 250) && false) {
 				frameBuffer[x + (y * frameX)] = dvec3(1.0, 1.0, 0.0);
 					
 			}
@@ -802,7 +768,9 @@ int main()
 #ifdef OUTPUTFRAMES
 		saveImage((std::to_string(frameCounter) + ".png"), window);
 #endif
-		//cin.get();
+#ifdef CIN
+		cin.get();
+#endif
 
 	}
 	//pool.stop();
