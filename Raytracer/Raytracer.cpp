@@ -58,6 +58,7 @@ using namespace glm;
 
 #define MAXBOUNCES 6u
 //#define OUTPUTFRAMES 151
+#define EVERYFRAME INFINITY
 #define CONCURRENT_FOR
 #define KDTRACE
 //#define CIN
@@ -245,17 +246,6 @@ HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 	traverseKDTree(fi.kdTree, ray, minRayResult, fi.currentTime);
 #else
 	rayHitListOfShapes(fi.shapes, ray, minRayResult, fi.currentTime);
-	/*for (Shape* shape : fi.shapes) {
-		HitResult rayResult;
-		if (shape->rayAABB(ray)) { //TODO:
-			if (shape->rayHit(ray, rayResult, fi.currentTime)) {
-				if (rayResult.depth < minRayResult.depth) {
-					//printf("hit something\n");
-					minRayResult = rayResult;
-				}
-			}
-		}
-	}*/
 #endif
 	return minRayResult;
 }
@@ -318,7 +308,7 @@ dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, 
 	solveQuadratic(1.0, 2.0*cosA1, 1.0-(1.0/(IORRatio * IORRatio)), k1, k2);
 	// for the solution that k that causes the new ray
 	//that has the smallest angle difference between it and the incident ray
-	if (k1 != NAN) {
+	if (!isnan(k1)) {
 		dvec3 reflectDir1 = glm::normalize(incidentVector + (k1 * hitNormal));
 		double closeness1 = glm::dot(incidentVector, reflectDir1);
 		if (closeness1 > maxCloseness && closeness1>=0.0) {
@@ -326,7 +316,7 @@ dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, 
 			trueReflectDir = reflectDir1;
 		}
 	}
-	if (k2 != NAN) {
+	if (!isnan(k2)) {
 		dvec3 reflectDir2 = glm::normalize(incidentVector + (k2 * hitNormal));
 		double closeness2 = glm::dot(incidentVector, reflectDir2);
 		if (closeness2 > maxCloseness && closeness2>=0.0) {
@@ -381,8 +371,6 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 
 
 	if (layer > MAXBOUNCES) {
-		//printf("returning cause max bounces\n");
-		//printf("returning cause max bounces\n");
 		colorResult = clearColor;
 		return false;
 	}
@@ -477,8 +465,8 @@ bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult
 
 
 
-void addModel(vector<Shape*>& shapes, string modelName, dvec3 pos = dvec3(0.0)) {
-	Model m(modelName, pos);
+void addModel(vector<Shape*>& shapes, string modelName, dvec3 pos = dvec3(0.0), dvec3 rot = dvec3(0.0, 0.0, 0.0)) {
+	Model m(modelName, pos, rot);
 	shapes.insert(shapes.end(), m.children.begin(), m.children.end());
 }
 
@@ -585,17 +573,31 @@ int main()
 
 
 
-	Vertex a(dvec3(-5.0, -3, -10.0), dvec2(0.0, 0.0));
-	Vertex b(dvec3(5.0, -3, -10.0), dvec2(1.0, 0.0));
-	Vertex c(dvec3(5.0, -3, 10.0), dvec2(1.0, 1.0));
-	Vertex d(dvec3(-5.0, -3, 10.0), dvec2(0.0, 1.0));
+	Vertex a(dvec3(-5.0, -5, -10.0), dvec2(0.0, 0.0));
+	Vertex b(dvec3(5.0, -5, -10.0), dvec2(1.0, 0.0));
+	Vertex c(dvec3(5.0, -5, 10.0), dvec2(1.0, 1.0));
+	Vertex d(dvec3(-5.0, -5, 10.0), dvec2(0.0, 1.0));
+
+	//shapes.push_back(new Triangle(a, b, c, checkers));
 
 	//shapes.push_back(new Triangle(a, c, b, checkers));
 	//shapes.push_back(new Triangle(a, d, c, checkers));
 
-
+	constexpr double mypifornow = glm::pi<double>();
 	//addModel(shapes, "brick2");
-	addModel(shapes, "bunny");
+	addModel(shapes, "bunny", vec3(-0.0, 0.0, -0.0));
+	//addModel(shapes, "bunny", vec3(-5.0, 0.0, 5.0));
+	//addModel(shapes, "bunny", vec3(5.0, 0.0, -5.0));
+	//addModel(shapes, "bunny", vec3(5.0, 0.0, 5.0));
+	//addModel(shapes, "bunny", vec3(0.0, 0.0, -5.0));
+	//addModel(shapes, "bunny", vec3(0.0, 0.0, 5.0));
+	//addModel(shapes, "bunny", vec3(-5.0, 0.0, 0.0));
+	//addModel(shapes, "bunny", vec3(5.0, 0.0, 0.0));
+
+	shapes.push_back(new Sphere(dvec3(5.0, 1, 0), 1.5, Material("Glass"), noMovement));
+
+	//addModel(shapes, "bunny", vec3(0.0, 0.0, 0.0), dvec3(mypifornow/2.0, 0.0, mypifornow/2.0));
+	//addModel(shapes, "backpack");
 	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, Material("Bug"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(1, 1, -3), 1.0, Material("PlainWhiteTees"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(-1, -1, 3), 1.0, Material("PlainWhiteTees"), noMovement));
@@ -634,7 +636,7 @@ int main()
 	float frameTimes[30](0);
 	int lastSecondFrameCount = -1;
 
-	uint32_t fps = 24;
+	uint32_t fps = 12;
 #ifdef OUTPUTFRAMES
 
 	time_t now;
@@ -647,14 +649,19 @@ int main()
 	printf("about to create directory: %s\n", saveFileDirectory.c_str());
 	filesystem::create_directory(("out/"+saveFileDirectory).c_str());
 
+
 	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES;) {
 		double currentFrame = double(frameCounter) / double(fps);
 #else
+#ifdef EVERYFRAME
 
+	for (uint32_t frameCounter = 0; frameCounter < INFINITY;) {
+		double currentFrame = double(frameCounter) / double(fps);
 
-
+#else
 	while (!glfwWindowShouldClose(window)) {
 		double currentFrame = glfwGetTime();
+#endif
 #endif
 
 		frameCounter++;
@@ -671,7 +678,7 @@ int main()
 			for (float f : frameTimes) {
 				sum += f;
 			}
-			printf("fps: %u\n", uint32_t(sum / 30.0f));
+			//printf("fps: %f\n", sum / 30.0f);
 		}
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
@@ -679,8 +686,8 @@ int main()
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-		dvec3 eye = vec3(sin(currentFrame) * 15.0, 0, cos(currentFrame) * 15.0);
-		//dvec3 eye = dvec3(0.0, 0.0, 15.0);
+		dvec3 eye = vec3(sin(currentFrame) * 10.0, 2.0, cos(currentFrame) * 10.0);
+		//dvec3 eye = dvec3(0, 2.0, 10.0);
 		dvec3 lookat = vec3(0.0, 0.0, 0.0);
 		dvec3 camForward = glm::normalize(lookat - eye);
 		dvec3 camUp = glm::normalize(vec3(0.0, 1.0, 0.0));
@@ -709,7 +716,7 @@ int main()
 			uint32_t x = i % frameX;
 			uint32_t y = i / frameX;
 
-			//prd =(x == 250 && y == 250);
+			//prd =(x == 250 && y == 140);
 			
 
 
@@ -747,8 +754,8 @@ int main()
 			}
 			frameBuffer[x + (y * frameX)] = colorAcum / double(n * n);
 
-			if ((x == 320 && y == 250) && false) {
-				frameBuffer[x + (y * frameX)] = dvec3(1.0, 1.0, 0.0);
+			if (prd) {
+				frameBuffer[x + (y * frameX)] = dvec3(0.0, 1.0, 1.0);
 					
 			}
 #ifdef CONCURRENT_FOR

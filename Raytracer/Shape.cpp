@@ -93,6 +93,8 @@ bool AABB::rayAABB(const Ray& ray)const {
 	return true;*/
 
 
+	//printf("\n\nray aabb\n");
+
 
 
 	dvec3 invD = 1.0 / ray.direction;
@@ -107,8 +109,9 @@ bool AABB::rayAABB(const Ray& ray)const {
 	tMin = glm::max(tMin, glm::max(tSmaller[0], glm::max(tSmaller[1], tSmaller[2])));
 	tMax = glm::min(tMax, glm::min(tBigger[0], glm::min(tBigger[1], tBigger[2])));
 
-	bool hit = tMin < tMax&& tMax >= 0.0;
+	bool hit = tMin <= tMax&& tMax >= 0.0;
 
+	//printf("tmin: %f, tmax: %f\n", tMin, tMax);
 
 	return hit;
 

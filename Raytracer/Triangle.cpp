@@ -72,7 +72,7 @@ void Triangle::redoAABB(double currentTime) {
 	dvec3 a = this->vertices[0].position;
 	dvec3 b = this->vertices[1].position;
 	dvec3 c = this->vertices[2].position;
-	dvec3 minB = glm::min(a, glm::min(b, c));// -dvec3(glm::epsilon<double>());
-	dvec3 maxB = glm::max(a, glm::max(b, c));// +dvec3(glm::epsilon<double>());
+	dvec3 minB = glm::min(a, glm::min(b, c)) - dvec3(glm::epsilon<double>());
+	dvec3 maxB = glm::max(a, glm::max(b, c)) + dvec3(glm::epsilon<double>());
 	this->boundingBox = AABB(minB, maxB);
 }

@@ -55,7 +55,7 @@ bool Sphere::rayHit(const Ray& ray, HitResult& hit, double currentTime) const {
 	double t0, t1;
 	solveQuadratic(a, b, c, t0, t1);
 
-	if (t0 == NAN && t1 == NAN) {
+	if (isnan(t0) && isnan(t1)) {
 		return false;
 	}
 

@@ -17,6 +17,13 @@ unsigned char badData[3] = { 255, 0, 255 };
 
 
 Model::Model(string modelname, dvec3 pos, dvec3 rotation) {
+    this->transform = mat4(1.0);
+    this->transform = glm::rotate(this->transform, float(rotation.x), vec3(1.0, 0.0, 0.0));
+    this->transform = glm::rotate(this->transform, float(rotation.y), vec3(0.0, 1.0, 0.0));
+    this->transform = glm::rotate(this->transform, float(rotation.z), vec3(0.0, 0.0, 1.0));
+    this->transform = glm::translate(this->transform, vec3(pos));
+
+
     //string directory = "./Models/" + modelname + "/" + modelname + ".fbx";
     this->directory = "./Models/" + modelname + "/";//
     this->loadModel(modelname);
@@ -61,7 +68,7 @@ void Model::loadModel(string modelName) {
 
     const aiScene* scene = importer.ReadFile(fullPath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
     this->originalTransform = mat4(1.0f);
-    this->transform = mat4(1.0f);
+    //this->transform = mat4(1.0f);
 
     for (uint32_t matIndex = 0; matIndex < scene->mNumMaterials; matIndex++) {
         aiMaterial* mat = scene->mMaterials[matIndex];
@@ -138,11 +145,11 @@ vector<Triangle*> Model::processMesh(aiMesh* mesh, const aiScene* scene, const m
         Vertex vertex;
         if (mesh->HasPositions()) {
 
-            vertex.position = transformPos( tv3(mesh->mVertices[i]), nodeTx);
+            vertex.position = transformPos( tv3(mesh->mVertices[i]), this->transform*nodeTx);
             //printf("vertex position: %s\n", glm::to_string(vertex.position).c_str());
         }
         if (mesh->HasNormals()) {
-            vertex.normal = glm::normalize(transformNormal(tv3(mesh->mNormals[i]), nodeTx));
+            vertex.normal = glm::normalize(transformNormal(tv3(mesh->mNormals[i]), this->transform*nodeTx));
         }
         if (mesh->HasTangentsAndBitangents()) {
             vertex.tangent = tv3(mesh->mTangents[i]);

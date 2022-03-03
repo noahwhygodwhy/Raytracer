@@ -66,7 +66,7 @@ void sortShapesMin(vector<Shape*>& shapes, Axis axis) {
 const bool dKD = false;
 
 KDNode* buildKDTree(vector<Shape*> shapes, AABB box, Axis axis, int recursionWithoutChange, int layer) {
-	if (shapes.size() < 6 || recursionWithoutChange > 3 || layer > 25) {//TODO: this is basic, and can be optimized
+	if (shapes.size() < 7 || recursionWithoutChange > 3 || layer > 20) {//TODO: this is basic, and can be optimized
 		return new KDLeaf(shapes); 
 	}
 	double value = shapes.at(shapes.size() / 2u)->boundingBox.mid[axis];
@@ -175,10 +175,12 @@ bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double current
 				}
 				else {
 					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
-					if (leftSideHit) {
+					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+					return leftSideHit || rightSideHit;
+					/*if (leftSideHit) {
 						return leftSideHit;
 					}
-					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);*/
 				}
 			}
 			else {
@@ -186,11 +188,14 @@ bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double current
 					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
 				}
 				else {
+					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
 					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+					return leftSideHit || rightSideHit;
+					/*bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
 					if (rightSideHit) {
 						return rightSideHit;
 					}
-					return traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
+					return traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);*/
 				}
 			}
 		}
@@ -200,16 +205,16 @@ bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double current
 bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& minRayResult, double currentTime) {
 	bool toReturn = false;
 
-	if (prd)printf("shapes: %zu\n", shapes.size());
+	if(prd)printf("shapes: %zu\n", shapes.size());
 	for (Shape* shape : shapes) {
 		HitResult rayResult;
 		if (shape->rayAABB(ray)) {//TODO reenable this
 			if (prd)printf("rayaabb\n");
 			if (shape->rayHit(ray, rayResult, currentTime)) {
-				toReturn = true;
 				if(prd)printf("ray hit at %s\n", glm::to_string(rayResult.position).c_str());
 				if(prd)printf("depth of %f\n", rayResult.depth);
 				if (rayResult.depth < minRayResult.depth) {
+					toReturn = true;
 					minRayResult = rayResult;
 				}
 			}
