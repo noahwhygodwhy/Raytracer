@@ -25,8 +25,8 @@ public:
 	~Texture();
     dvec3 vec3Sample(dvec2 uv);
     double doubleSample(dvec2 uv);
-    std::function<double (dvec2)> getDoubleSampler() { return std::bind(&Texture::doubleSample, this, std::placeholders::_1); }
-    std::function<vec3 (dvec2)> getVec3Sampler() { return std::bind(&Texture::vec3Sample, this, std::placeholders::_1); }
+    function<double(dvec2)> getDoubleSampler() { return std::bind(&Texture::doubleSample, this, std::placeholders::_1); }
+    function<vec3(dvec2)> getVec3Sampler() { return std::bind(&Texture::vec3Sample, this, std::placeholders::_1); }
 
 private:
 

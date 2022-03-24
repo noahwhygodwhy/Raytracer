@@ -1,6 +1,7 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 #include "Shape.hpp"
+#include "Model.hpp"
 #include "Animatable.hpp"
 #include "Material.hpp"
 #include "CoordinateHelpers.hpp"

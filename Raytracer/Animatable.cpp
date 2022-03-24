@@ -1,5 +1,4 @@
 #include "Animatable.hpp"
-
 using namespace std;
 using namespace glm;
 

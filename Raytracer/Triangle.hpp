@@ -28,6 +28,15 @@ struct Vertex {
 		position = a;
 		texCoords = uv;
 	}
+	Vertex(dvec3 a, dvec3 n) {
+		position = a;
+		normal = n;
+	}
+	Vertex(dvec3 a, dvec3 n, dvec2 uv) {
+		position = a;
+		normal = n;
+		texCoords = uv;
+	}
 	Vertex() {
 		position = normal = tangent = bitangent = dvec3(1.0);
 		texCoords = dvec2(1.0);

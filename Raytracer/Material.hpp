@@ -22,13 +22,6 @@ struct materialStats {
 	double smoothness = 0.5;
 };
 
-//unordered_map<string, materialStats> materials;
-
-
-//TODO: finish writing up the rest of the functions
-//write up the constructor that accepts only optional parameters lol
-//like, bug material, and a bunch of nulls for the other functions
-
 class Material {
 
 public:

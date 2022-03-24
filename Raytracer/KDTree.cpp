@@ -177,6 +177,7 @@ bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double current
 					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
 					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
 					return leftSideHit || rightSideHit;
+					/*bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
 					/*if (leftSideHit) {
 						return leftSideHit;
 					}
@@ -204,7 +205,7 @@ bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double current
 
 bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& minRayResult, double currentTime) {
 	bool toReturn = false;
-
+	if (prd)printf("rayhitlistofshapes with ray: %s, %s\n", glm::to_string(ray.origin).c_str(), glm::to_string(ray.direction).c_str());
 	if(prd)printf("shapes: %zu\n", shapes.size());
 	for (Shape* shape : shapes) {
 		HitResult rayResult;
