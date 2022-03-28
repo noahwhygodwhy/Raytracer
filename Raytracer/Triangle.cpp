@@ -9,7 +9,6 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 
 	
 
-	if(prd)printf("ray checking triangle\n");
 
 
 	//TODO: should really be done every frame, not every frame*ray
@@ -19,24 +18,13 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 	dvec3 b = this->vertices[1].position;
 	dvec3 c = this->vertices[2].position;
 
-
-	if (prd)printf("a: %s\nb: %s\nc: %s\n", glm::to_string(a).c_str(), glm::to_string(b).c_str(), glm::to_string(c).c_str());
-
-
-	if (prd)printf("a: %s\nb: %s\nc: %s\n", glm::to_string(this->vertices[0].normal).c_str(), glm::to_string(this->vertices[1].normal).c_str(), glm::to_string(this->vertices[2].normal).c_str());
-
 	dvec3 E1 = b - a;
 	dvec3 E2 = c - a;
-	if (prd)printf("E1: %s\nE2: %s\n", glm::to_string(E1).c_str(), glm::to_string(E2).c_str());
-
-	if (prd)printf("ray.direction: %s\n", glm::to_string(ray.direction).c_str());
 
 	dvec3 pvec = glm::cross(ray.direction, E2);
-	if (prd)printf("pvec: %s\n", glm::to_string(pvec).c_str());
 	double determinant = glm::dot(E1, pvec);
 
 	if (determinant < 0.0) {//TODO: i fucked something up
-		if (prd) printf("triangle no hit 1\n");
 		return false;
 	}
 
@@ -47,7 +35,6 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 	double u = glm::dot(tvec, pvec) * inverseDeterminant;
 
 	if (u < 0.0 || u > 1.0) {
-		if (prd) printf("triangle no hit 2\n");
 		return false;
 	}
 
@@ -55,14 +42,12 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 	double v = glm::dot(ray.direction, qvec) * inverseDeterminant;
 
 	if (v < 0.0 || u + v > 1.0) {
-		if (prd) printf("triangle no hit 3\n");
 		return false;
 	}
 
 
 	hit.bary = dvec3(1.0f - (u + v), u, v);
 
-	if(prd)printf("bary: %s\n", glm::to_string(hit.bary).c_str());
 
 	hit.position = (a * hit.bary.x) + (b * hit.bary.y) + (c * hit.bary.z);
 
@@ -73,8 +58,6 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 
 
 	hit.normal = badNormal;// transformNormal(badNormal, model);
-	if (prd)printf("badNormal: %s\n", glm::to_string(badNormal).c_str());
-	//hit.normal = transformNormal(badNormal, dmat4(1.0));
 
 
 

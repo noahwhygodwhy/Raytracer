@@ -2,12 +2,9 @@
 
 using namespace std;
 using namespace glm;
-PointLight::PointLight(const dvec3& position, const dvec3& color, const dvec3& attenuationVals) : Light(color)
+PointLight::PointLight(const dvec3& position, const dvec3& color) : Light(color)
 {
 	this->position = position;
-	this->constant = attenuationVals.x;
-	this->linear = attenuationVals.y;
-	this->quadratic = attenuationVals.z;
 
 }
 
@@ -25,6 +22,6 @@ Ray PointLight::getRay(const dvec3& rayOrigin) const {
 	return Ray(rayOrigin, glm::normalize(this->position - rayOrigin));
 }
 
-double PointLight::getAttenuation(double distance)const {
-	return (this->constant + (this->linear * distance) + (this->quadratic * (distance * distance)));
+double PointLight::getAttenuation(double distance, double constant, double linear, double quadratic)const {
+	return (constant + (linear * distance) + (quadratic * (distance * distance)));
 }

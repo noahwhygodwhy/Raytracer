@@ -54,13 +54,13 @@ public:
 
 
 
-	dvec3 getColor(dvec2 uv);
-	dvec3 getNormal(dvec2 uv, dvec3 defaultNormal);
-	double getNS(dvec2 uv);
-	double getNI(dvec2 uv);
-	double getTransparency(dvec2 uv);
-	double getMetalness(dvec2 uv);
-	double getSmoothness(dvec2 uv);
+	dvec3 getColor(dvec2 uv)const;
+	dvec3 getNormal(dvec2 uv, dvec3 defaultNormal)const;
+	double getNS(dvec2 uv)const;
+	double getNI(dvec2 uv)const;
+	double getTransparency(dvec2 uv)const;
+	double getMetalness(dvec2 uv)const;
+	double getSmoothness(dvec2 uv)const;
 private:
 
 	function<dvec3(dvec2)> colorFn;

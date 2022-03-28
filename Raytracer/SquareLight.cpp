@@ -5,11 +5,8 @@ using namespace glm;
 
 extern bool prd;
 
-SquareLight::SquareLight(dvec3 position, dvec3 normal, double width, double height, const dvec3& attenuationVals, dvec3 color) : Light(color, true)
+SquareLight::SquareLight(dvec3 position, dvec3 normal, double width, double height, dvec3 color) : Light(color, true)
 {
-	this->constant = attenuationVals.x;
-	this->linear = attenuationVals.y;
-	this->quadratic = attenuationVals.z;
 
 	dvec3 worldUp = dvec3(0.0, 1.0, 0.0);
 
@@ -54,29 +51,20 @@ double randDub() {
 }
 
 Ray SquareLight::getRay(const dvec3& rayOrigin) const {
-	if(prd)printf("\n\n\nGETTING RAY FOR SQUARE LIGHT\n");
 	double randX = randDub();
 	double randY = randDub();
 
-	if(prd)printf("%f, %f\n", randX, randY);
 
-
-	if (prd)printf("right: %s\n", glm::to_string(this->right).c_str());
-	if (prd)printf("up: %s\n", glm::to_string(this->up).c_str());
-
-	//randX = 1.0;
-	//randY = 1.0;
 
 	dvec3 randomPosition = this->bottomLeft + (this->right * randX*width) + (this->up * randY*height);
 
-	if(prd)printf("random position: %s\n", glm::to_string(randomPosition).c_str());
 
 	return Ray(rayOrigin, glm::normalize(randomPosition - rayOrigin));
 
 }
 
-double SquareLight::getAttenuation(double distance)const {
-	return (this->constant + (this->linear * distance) + (this->quadratic * (distance * distance)));
+double SquareLight::getAttenuation(double distance, double constant, double linear, double quadratic)const {
+	return (constant + (linear * distance) + (quadratic * (distance * distance)));
 }
 
 double SquareLight::getDistance(const Ray& ray) const {

@@ -18,7 +18,7 @@ public:
 	~DirectionalLight();
 	double getDistance(const Ray& ray) const;
 	Ray getRay(const dvec3& rayOrigin) const;
-	double getAttenuation(double distance)const;
+	double getAttenuation(double distance, double constant, double linear, double quadratic)const;
 private:
 	dvec3 direction;
 	dvec3 reverseDirection;

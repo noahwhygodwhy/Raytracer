@@ -101,7 +101,7 @@ Material::Material(
 
 
 
-dvec3 Material::getColor(dvec2 uv) {
+dvec3 Material::getColor(dvec2 uv) const {
 	//printf("gettingColor\n");
 	if (this->colorFn != nullptr) {
 		//printf("colorfn exists\n");
@@ -111,38 +111,38 @@ dvec3 Material::getColor(dvec2 uv) {
 	//printf("just returning default color\n");
 	return this->color;
 }
-dvec3 Material::getNormal(dvec2 uv, dvec3 defaultNormal) {
+dvec3 Material::getNormal(dvec2 uv, dvec3 defaultNormal) const {
 	if (this->normalFn != nullptr) {
 		return this->normalFn(uv);
 	}
 	return defaultNormal;
 }
-double Material::getNS(dvec2 uv) {
+double Material::getNS(dvec2 uv) const {
 	if (this->nsFn != nullptr) {
 		return this->nsFn(uv);
 	}
 	return this->ns;
 
 }
-double Material::getNI(dvec2 uv) {
+double Material::getNI(dvec2 uv) const {
 	if (this->niFn != nullptr) {
 		return this->niFn(uv);
 	}
 	return this->ni;
 }
-double Material::getTransparency(dvec2 uv) {
+double Material::getTransparency(dvec2 uv) const {
 	if (this->transparencyFn != nullptr) {
 		return this->transparencyFn(uv);
 	}
 	return this->transparency;
 }
-double Material::getMetalness(dvec2 uv) {
+double Material::getMetalness(dvec2 uv) const {
 	if (this->metalnessFn != nullptr) {
 		return this->metalnessFn(uv);
 	}
 	return this->metalness;
 }
-double Material::getSmoothness(dvec2 uv) {
+double Material::getSmoothness(dvec2 uv) const {
 	if (this->smoothnessFn != nullptr) {
 		return this->smoothnessFn(uv);
 	}

@@ -26,6 +26,6 @@ Ray DirectionalLight::getRay(const dvec3& rayOrigin) const {
 
 	return Ray(rayOrigin, glm::normalize(transposition - rayOrigin));
 }
-double DirectionalLight::getAttenuation(double distance)const {
+double DirectionalLight::getAttenuation(double distance, double constant, double linear, double quadratic)const {
 	return 1.0;
 }

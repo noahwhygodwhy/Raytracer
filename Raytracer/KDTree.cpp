@@ -205,15 +205,10 @@ bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double current
 
 bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& minRayResult, double currentTime) {
 	bool toReturn = false;
-	if (prd)printf("rayhitlistofshapes with ray: %s, %s\n", glm::to_string(ray.origin).c_str(), glm::to_string(ray.direction).c_str());
-	if(prd)printf("shapes: %zu\n", shapes.size());
 	for (Shape* shape : shapes) {
 		HitResult rayResult;
 		if (shape->rayAABB(ray)) {//TODO reenable this
-			if (prd)printf("rayaabb\n");
 			if (shape->rayHit(ray, rayResult, currentTime)) {
-				if(prd)printf("ray hit at %s\n", glm::to_string(rayResult.position).c_str());
-				if(prd)printf("depth of %f\n", rayResult.depth);
 				if (rayResult.depth < minRayResult.depth) {
 					toReturn = true;
 					minRayResult = rayResult;
