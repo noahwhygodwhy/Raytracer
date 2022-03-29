@@ -68,7 +68,7 @@ bool Sphere::rayHit(const Ray& ray, HitResult& hit, double currentTime) const {
 			return false;
 		}
 	}
-
+	
 
 	hit.position = ray.origin + (ray.direction * t0);
 	hit.normal = transformNormal(glm::normalize(hit.position - transOrigin), currModel);

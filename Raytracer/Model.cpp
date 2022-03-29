@@ -85,7 +85,7 @@ void Model::loadModel(string modelName) {
         printf("filename: %s\n", fileName->C_Str());
 
         Texture* diffuse = loadTexture(string(fileName->C_Str()), this->directory);
-        this->modelMaterials.push_back(Material("PlainWhiteTees", diffuse->getVec3Sampler()));
+        this->modelMaterials.push_back(Material("PlainWhiteTees", dvec3(0), diffuse->getVec3Sampler()));
         //this->modelMaterials.push_back(Material("PlainWhiteTees"));
 
     }

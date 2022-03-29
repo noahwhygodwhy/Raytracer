@@ -33,6 +33,7 @@ public:
 		double transparency = 0.0,
 		double metalness = 0.5,
 		double smoothness = 0.5,
+		dvec3 emission = dvec3(0.0, 0.0, 0.0),
 		function<dvec3(dvec2)> colorFn = nullptr,
 		function<dvec3(dvec2)> normalFn = nullptr,
 		function<double(dvec2)> nsFn = nullptr,
@@ -43,6 +44,7 @@ public:
 	);
 	Material(
 		string premade,
+		dvec3 emmision = dvec3(0.0, 0.0, 0.0),
 		function<dvec3(dvec2)> colorFn = nullptr,
 		function<dvec3(dvec2)> normalFn = nullptr,
 		function<double(dvec2)> nsFn = nullptr,
@@ -61,6 +63,7 @@ public:
 	double getTransparency(dvec2 uv)const;
 	double getMetalness(dvec2 uv)const;
 	double getSmoothness(dvec2 uv)const;
+	dvec3 getEmission() const;
 private:
 
 	function<dvec3(dvec2)> colorFn;
@@ -77,6 +80,7 @@ private:
 	double transparency;
 	double metalness;
 	double smoothness;
+	dvec3 emission;
 };
 
 

@@ -9,9 +9,13 @@
 //lol this is bad
 unordered_map<string, materialStats> materials = unordered_map<string, materialStats>{
 	{"Glass", materialStats(dvec3(1.0, 1.0, 1.0), 50.0, 1.54, 0.8, 0.2, 1.0)},
-	{"PlainWhiteTees", materialStats(dvec3(1.0, 1.0, 1.0), 100.0, 1.0, 0.0, 0.0, 1.0)},
+	{"PlainWhiteTees", materialStats(dvec3(1.0, 1.0, 1.0), 100.0, 1.0, 0.0, 0.0, 0.0)},
+	{"Red", materialStats(dvec3(1.0, 0.0, 0.0), 100.0, 1.0, 0.0, 0.0, 0.0)},
+	{"Green", materialStats(dvec3(0.0, 1.0, 0.0), 100.0, 1.0, 0.0, 0.0, 0.0)},
 	{"Bug", materialStats(dvec3(1.0, 0.0, 1.0), 100.0, 1.0, 0.0, 0.0, 1.0)},
-	{"Copper", materialStats(dvec3(0.7038,0.27048,0.0828), 100.0, 1.0, 0.0, 0.5, 0.5)}
+	{"Copper", materialStats(dvec3(0.7038,0.27048,0.0828), 100.0, 1.0, 0.0, 0.5, 0.5)},
+	{"Mirror", materialStats(dvec3(1.0, 1.0, 1.0), 50.0, 1.0, 0.0, 1.0, 1.0)},
+
 
 };
 
@@ -39,6 +43,7 @@ Material::Material(
 	double transparency,
 	double metalness,
 	double smoothness,
+	dvec3 emission,
 	function<dvec3(dvec2)> colorFn,
 	function<dvec3(dvec2)> normalFn,
 	function<double(dvec2)> nsFn,
@@ -53,6 +58,7 @@ Material::Material(
 	this->transparency = transparency;
 	this->metalness = metalness;
 	this->smoothness = smoothness;
+	this->emission = emission;
 
 	this->colorFn = colorFn;
 	this->normalFn = normalFn;
@@ -75,6 +81,7 @@ Material::Material(
 
 Material::Material(
 	string premade,
+	dvec3 emmision,
 	function<dvec3(dvec2)> colorFn,
 	function<dvec3(dvec2)> normalFn,
 	function<double(dvec2)> nsFn,
@@ -90,6 +97,7 @@ Material::Material(
 	this->transparency = stats.transparency;
 	this->metalness = stats.metalness;
 	this->smoothness = stats.smoothness;
+	this->emission = emmision;
 	this->colorFn = colorFn;
 	this->normalFn = normalFn;
 	this->niFn = niFn;
@@ -147,4 +155,8 @@ double Material::getSmoothness(dvec2 uv) const {
 		return this->smoothnessFn(uv);
 	}
 	return this->smoothness;
+}
+
+dvec3 Material::getEmission() const {
+	return this->emission;
 }
