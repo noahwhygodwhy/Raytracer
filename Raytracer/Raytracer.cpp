@@ -565,14 +565,16 @@ int main()
 
 	//shapes.push_back(new Sphere(dvec3(0.0, 0.0, 0.0), 4.0, Material("Mirror"), noMovement));
 
+
+
 	shapes.push_back(new Sphere(dvec3(0.0, 15, 0.0), 5, Material("PlainWhiteTees", dvec3(3.0, 3.0, 3.0)), noMovement));
 
-	shapes.push_back(new Sphere(dvec3(0.0, 3, 0.0), 3, red, noMovement));
-	shapes.push_back(new Sphere(dvec3(-6.0, 3, 0.0), 3, green, noMovement));
-	shapes.push_back(new Sphere(dvec3(6.0, 3, 0.0), 3, blue, noMovement));
+	//shapes.push_back(new Sphere(dvec3(0.0, 3, 0.0), 3, red, noMovement));
+	//shapes.push_back(new Sphere(dvec3(-6.0, 3, 0.0), 3, green, noMovement));
+	//shapes.push_back(new Sphere(dvec3(6.0, 3, 0.0), 3, blue, noMovement));
 	shapes.push_back(new Sphere(dvec3(0.0, 5, 8.0), 2, glass, noMovement));
 	shapes.push_back(new Sphere(dvec3(-6.0, 8, -8.0), 3, mirrorA, noMovement));
-	shapes.push_back(new Sphere(dvec3(6.0, 8, -8.0), 3, mirrorB, noMovement));
+	//shapes.push_back(new Sphere(dvec3(6.0, 8, -8.0), 3, glass, noMovement));
 
 
     //shapes.push_back(new Sphere(dvec3(1.0, -4.2, 0.0), 2.0, Material("Glass"), noMovement));
@@ -581,33 +583,7 @@ int main()
 	//addModel(shapes, "brick2");
 	//addModel(shapes, "bunny", vec3(-0.0, 0.0, -0.0));
 
-
-	//shapes.push_back(new Sphere(dvec3(0.0, 0, 0), 1.5, checkers, noMovement));
-
-	//addModel(shapes, "bunny", vec3(0.0, 0.0, 0.0), dvec3(mypifornow/2.0, 0.0, mypifornow/2.0));
-
-
-	//addModel(shapes, "lemon");
-
-
-	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, Material("Bug"), noMovement));
-	//shapes.push_back(new Sphere(dvec3(1, 1, -3), 1.0, Material("PlainWhiteTees"), noMovement));
-	//shapes.push_back(new Sphere(dvec3(-1, -1, 3), 1.0, Material("PlainWhiteTees"), noMovement));
-
 	vector<Light*> lights;
-
-	/*lights.push_back(new PointLight(
-		dvec3(5.0, 5.0, 5.0),
-		dvec3(1.0, 1.0, 1.0),
-		dvec3(1.0, 0.09, 0.032)
-	));*/
-
-	/*lights.push_back(new DirectionalLight(
-		dvec3(-1.0, -1.0, 0.0),
-		dvec3(1.0, 1.0, 1.0)
-	));*/
-
-	//lights.push_back(new SquareLight(dvec3(0.0, 10.0, 0.0), dvec3(0.0, -1.0, 0.0), 1.0, 1.0));
 
 
 
