@@ -59,25 +59,24 @@ using namespace glm;
 
 
 #define MAX_PATH 50
-//#define MAXBOUNCES 3u
-//#define OUTPUTFRAMES 1
+//#define OUTPUTPASSES 1
+//#define OUTPUTFRAMES 30
 //#define EVERYFRAME INFINITY
 #define CONCURRENT_FOR
 #define KDTRACE
 #define CIN
-#define LIGHTING
-#define GLOBAL_LIGHTING
 
-#define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 100
+#define PIXEL_MULTISAMPLE_N 2
+#define MONTE_CARLO_SAMPLES 10
 
-#define PATH_TRACE
+
+//#define BASIC_BITCH
 
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 1000;
-uint32_t frameY = 1000;
+uint32_t frameX = 500;
+uint32_t frameY = 500;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -132,7 +131,10 @@ bool frontFacing(vec3 a, vec3 b, vec3 c) {
 double randDubTwo() {
 	return static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 }
-dvec3 randomHemisphericalVector(dvec3 normal) {
+double randDubThree() {
+	return (((static_cast <double> (rand()) / static_cast <double> (RAND_MAX))*2.0)-1.0);
+}
+/*dvec3 randomHemisphericalVector(dvec3 normal) {
 
 	normal = glm::normalize(normal);
 	dvec3 worldUp = normal.y > 0.9 ? dvec3(0.0, 1.0, 0.0) : dvec3(1.0, 0.0, 0.0);
@@ -149,7 +151,24 @@ dvec3 randomHemisphericalVector(dvec3 normal) {
 	dvec3 rotVector = glm::cross(normal, worldUp);
 	double rotRads = glm::acos(glm::dot(normal, worldUp));
 	return glm::rotate(newVec, rotRads, rotVector);
+}*/
+dvec3 randomHemisphericalVector(dvec3 normal) {
+	dvec3 outVec(0);
+	normal = glm::normalize(normal);
+	do {
+		outVec = glm::normalize(dvec3(randDubThree(), randDubThree(), randDubThree()));
+	} while (glm::dot(normal, outVec) < 0.0);
+	return outVec;
 }
+dvec3 randomSpecularVector(dvec3 normal) {
+	dvec3 outVec(0);
+	normal = glm::normalize(normal);
+	do {
+		outVec = glm::normalize(dvec3(randDubThree(), randDubThree(), randDubThree()));
+	} while (glm::dot(normal, outVec) < 0.9);
+	return outVec;
+}
+
 
 //since it's not part of the assignment to write a function to save to image, i just copied this directly from
 //https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
@@ -291,15 +310,20 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 		if (prd)printf("didn't hit nuffin\n");
 		return clearColor * 0.1;
 	}
+#ifdef BASIC_BITCH
+	return minRayResult.shape->mat.getColor(minRayResult.uv);
+#endif
 
 	dvec2 uv = minRayResult.uv;
 	Material mat = minRayResult.shape->mat;
 
 	double trans = mat.getTransparency(uv);
 	double smooth = mat.getSmoothness(uv);
+	double metal = mat.getMetalness(uv);
 
 	double transparencyDecider = randDubTwo();
 	double reflectanceDecider = randDubTwo();
+	double specularDecider = randDubTwo();
 
 
 	dvec3 newRayDirection;
@@ -328,13 +352,21 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 		if (prd)printf("case2\n");
 		newRayDir = -rotate(ray.direction, glm::pi<double>(), minRayResult.normal);
 		newRayPos = minRayResult.position + (minRayResult.normal * bias);
-	} else {
+	} else if(specularDecider < metal) {
 		if (prd)printf("case3\n");
 
-		newRayDir = randomHemisphereVector(randDubTwo(), randDubTwo());
+		newRayDir = randomSpecularVector(minRayResult.normal);
+		newRayPos = minRayResult.position + (minRayResult.normal * bias);
+		//do specular stuff
 
+	}
+	else {
+		if (prd)printf("case4\n");
+		newRayDir = randomHemisphericalVector(minRayResult.normal);
 		newRayPos = minRayResult.position + (minRayResult.normal * bias);
 	}
+
+
 	Ray reflectionRay(newRayPos, newRayDir);
 
 
@@ -492,10 +524,10 @@ int main()
 	//Material pyt("PlainWhiteTees");
 
 
-	Vertex a(dvec3(-1000.0, -5, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 0.0));
-	Vertex b(dvec3(1000.0, -5, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 0.0));
-	Vertex c(dvec3(1000.0, -5, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 1.0));
-	Vertex d(dvec3(-1000.0, -5, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 1.0));
+	Vertex a(dvec3(-1000.0, 0, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 0.0));
+	Vertex b(dvec3(1000.0, 0, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 0.0));
+	Vertex c(dvec3(1000.0, 0, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 1.0));
+	Vertex d(dvec3(-1000.0, 0, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 1.0));
 
 	/*
 
@@ -515,40 +547,35 @@ int main()
 
 
 
-	//shapes.push_back(new Triangle(a, b, c, checkers));
-	//shapes.push_back(new Triangle(a, c, b, checkers));
+	shapes.push_back(new Triangle(a, c, b, checkers));
 	
-	//shapes.push_back(new Triangle(a, d, c, checkers));
-	/*shapes.push_back(new Triangle(aR, bR, cR, checkers));
-	shapes.push_back(new Triangle(aR, cR, dR, checkers));
-	shapes.push_back(new Triangle(aL, cL, bL, checkers));
-	shapes.push_back(new Triangle(aL, dL, cL, checkers));*/
+	shapes.push_back(new Triangle(a, d, c, checkers));
 
 
 	double wallRadius = 100000.0;
 	double roomSize = 7.0;
 	double totalRad = wallRadius + roomSize;
 
-	shapes.push_back(new Sphere(dvec3(0.0, totalRad, 0.0), wallRadius, white, noMovement));
-	shapes.push_back(new Sphere(dvec3(0.0, -totalRad, 0.0), wallRadius, white, noMovement));
-	shapes.push_back(new Sphere(dvec3(totalRad, 0.0, 0.0), wallRadius, red, noMovement));
-	shapes.push_back(new Sphere(dvec3(-totalRad, 0.0, 0.0), wallRadius, green, noMovement));
+	//shapes.push_back(new Sphere(dvec3(0.0, totalRad, 0.0), wallRadius, white, noMovement));
+	//shapes.push_back(new Sphere(dvec3(0.0, -totalRad, 0.0), wallRadius, white, noMovement));
+	//shapes.push_back(new Sphere(dvec3(totalRad, 0.0, 0.0), wallRadius, red, noMovement));
+	//shapes.push_back(new Sphere(dvec3(-totalRad, 0.0, 0.0), wallRadius, green, noMovement));
 	//shapes.push_back(new Sphere(dvec3(0.0, 0.0, totalRad), wallRadius, Material("PlainWhiteTees"), noMovement));
-	shapes.push_back(new Sphere(dvec3(0.0, 0.0, -totalRad), wallRadius, white, noMovement));
+	//shapes.push_back(new Sphere(dvec3(0.0, 0.0, -totalRad), wallRadius, white, noMovement));
 
 	//shapes.push_back(new Sphere(dvec3(0.0, 0.0, 0.0), 4.0, Material("Mirror"), noMovement));
 
-	shapes.push_back(new Sphere(dvec3(0.0, 10, 10.0), 5, Material("PlainWhiteTees", dvec3(1.0, 1.0, 1.0)), noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 15, 0.0), 5, Material("PlainWhiteTees", dvec3(3.0, 3.0, 3.0)), noMovement));
 
-	//shapes.push_back(new Sphere(dvec3(0.0, 3, 0.0), 3, red, noMovement));
-	//shapes.push_back(new Sphere(dvec3(-6.0, 3, 0.0), 3, green, noMovement));
-	//shapes.push_back(new Sphere(dvec3(6.0, 3, 0.0), 3, blue, noMovement));
-	//shapes.push_back(new Sphere(dvec3(8.0, 3, 4.0), 3, glass, noMovement));
-	//shapes.push_back(new Sphere(dvec3(-6.0, 8, -8.0), 3, mirrorA, noMovement));
-	//shapes.push_back(new Sphere(dvec3(6.0, 8, -8.0), 3, mirrorB, noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 3, 0.0), 3, red, noMovement));
+	shapes.push_back(new Sphere(dvec3(-6.0, 3, 0.0), 3, green, noMovement));
+	shapes.push_back(new Sphere(dvec3(6.0, 3, 0.0), 3, blue, noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 5, 8.0), 2, glass, noMovement));
+	shapes.push_back(new Sphere(dvec3(-6.0, 8, -8.0), 3, mirrorA, noMovement));
+	shapes.push_back(new Sphere(dvec3(6.0, 8, -8.0), 3, mirrorB, noMovement));
 
 
-	//shapes.push_back(new Sphere(dvec3(1.0, -4.2, 0.0), 2.0, Material("Glass"), noMovement));
+    //shapes.push_back(new Sphere(dvec3(1.0, -4.2, 0.0), 2.0, Material("Glass"), noMovement));
 
 	constexpr double mypifornow = glm::pi<double>();
 	//addModel(shapes, "brick2");
@@ -560,7 +587,7 @@ int main()
 	//addModel(shapes, "bunny", vec3(0.0, 0.0, 0.0), dvec3(mypifornow/2.0, 0.0, mypifornow/2.0));
 
 
-	addModel(shapes, "lemon");
+	//addModel(shapes, "lemon");
 
 
 	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, Material("Bug"), noMovement));
@@ -603,7 +630,7 @@ int main()
 	float frameTimes[30](0);
 	int lastSecondFrameCount = -1;
 
-	uint32_t fps = 12;
+	uint32_t fps = 4;
 
 
 	/*time_t now;
@@ -615,7 +642,7 @@ int main()
 
 	printf("about to create directory: %s\n", saveFileDirectory.c_str());
 	filesystem::create_directory(("out/" + saveFileDirectory).c_str());*/
-#ifdef OUTPUTFRAMES
+#ifdef OUTPUTFRAMES or OUTPUTPASSES
 
 	time_t now;
 	time(&now);
@@ -627,10 +654,11 @@ int main()
 	printf("about to create directory: %s\n", saveFileDirectory.c_str());
 	filesystem::create_directory(("out/"+saveFileDirectory).c_str());
 
-
+#ifdef OUTPUTFRAMES
 	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES;) {
 		double currentFrame = double(frameCounter) / double(fps);
 		printf("frame counter: %u\n", frameCounter);
+#endif
 #else
 
 	while (!glfwWindowShouldClose(window)) {
@@ -665,9 +693,11 @@ int main()
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-		//dvec3 eye = vec3(sin(currentFrame/3.0) * 3.0, 1.0, cos(currentFrame/3.0) * 3.0);
-		dvec3 eye = dvec3(0, 0, 6);
+		//dvec3 eye = vec3(sin(currentFrame) * 3.0, 1.0, cos(currentFrame) * 3.0);
+		dvec3 eye = dvec3(0, 5, 25);
+
 		dvec3 lookat = vec3(0.0, 0.0, 0.0);
+		//lookat = vec3(0.0, -5.0, 15);
 
 		printf("looking at %s\n", glm::to_string(lookat).c_str());
 		dvec3 camForward = glm::normalize(lookat - eye);
@@ -681,7 +711,7 @@ int main()
 		double viewPortHeight = 2.0f;
 		double viewPortWidth = viewPortHeight * frameRatio;
 
-		double fov = 140;
+		double fov = 90;
 		double focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
 		//qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
 
@@ -690,7 +720,7 @@ int main()
 		clearBuffers();
 		for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
 			//clearDrawBuffer();
-			if (i % 5 == 0) {
+			if (i % 1 == 0) {
 				printf("on montecarlo %i\n", i);
 			}
 #ifdef CONCURRENT_FOR
@@ -720,8 +750,10 @@ int main()
 					double offsetX = x * (clipSpacePixelSize.x / (n + 1));
 					for (uint32_t y = 1; y <= n; y++) {
 						double offsetY = y * (clipSpacePixelSize.y / (n + 1));
+
 						dvec3 rayVector = glm::normalize((coordOnScreen + dvec3(offsetX, offsetY, 0.0)) - eye);
 						Ray initialRay(eye, rayVector);
+
 						dvec3 colorOut = pathTrace(initialRay, fi);
 						if(prd)printf("color out: %s\n", glm::to_string(colorOut).c_str());
 
@@ -749,10 +781,11 @@ int main()
 			glfwSwapBuffers(window);
 			processInput(window);
 			glfwPollEvents();
-			//cin.get();
-			if (i % 1 == 0) {
-				//saveImage((std::to_string((i/5)+1) + ".png"), window);
+#ifdef OUTPUTPASSES
+			if (i % OUTPUTPASSES == 0) {
+				saveImage((std::to_string((i/5)+1) + ".png"), window);
 			}
+#endif
 		}
 
 
