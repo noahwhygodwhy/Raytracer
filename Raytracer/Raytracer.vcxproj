@@ -146,17 +146,21 @@
     <ClCompile Include="Animatable.cpp" />
     <ClCompile Include="Biconvex.cpp" />
     <ClCompile Include="CoordinateHelpers.cpp" />
+    <ClCompile Include="DirectionalLight.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="KDTree.cpp" />
+    <ClCompile Include="Light.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Model.hpp" />
+    <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="Procedural.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Raytracer.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Shape.cpp" />
     <ClCompile Include="Sphere.cpp" />
+    <ClCompile Include="SquareLight.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Triangle.cpp" />
   </ItemGroup>
@@ -166,6 +170,7 @@
     <None Include="vert.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="SquareLight.hpp" />
     <ClInclude Include="Animatable.hpp" />
     <ClInclude Include="Biconvex.hpp" />
     <ClInclude Include="CoordinateHelpers.hpp" />
@@ -190,6 +195,7 @@
     <Import Project="..\packages\glm.0.9.9.800\build\native\glm.targets" Condition="Exists('..\packages\glm.0.9.9.800\build\native\glm.targets')" />
     <Import Project="..\packages\glfw.3.3.6\build\native\glfw.targets" Condition="Exists('..\packages\glfw.3.3.6\build\native\glfw.targets')" />
     <Import Project="..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets" Condition="Exists('..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets')" />
+    <Import Project="..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets" Condition="Exists('..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -198,5 +204,6 @@
     <Error Condition="!Exists('..\packages\glm.0.9.9.800\build\native\glm.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\glm.0.9.9.800\build\native\glm.targets'))" />
     <Error Condition="!Exists('..\packages\glfw.3.3.6\build\native\glfw.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\glfw.3.3.6\build\native\glfw.targets'))" />
     <Error Condition="!Exists('..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets'))" />
+    <Error Condition="!Exists('..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets'))" />
   </Target>
 </Project>

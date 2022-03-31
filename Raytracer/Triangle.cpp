@@ -7,8 +7,12 @@ using namespace glm;
 
 bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const {
 
+	
+
+
 
 	//TODO: should really be done every frame, not every frame*ray
+
 	constexpr double epsilon = glm::epsilon<double>();
 	dvec3 a = this->vertices[0].position;
 	dvec3 b = this->vertices[1].position;
@@ -43,6 +47,8 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 
 
 	hit.bary = dvec3(1.0f - (u + v), u, v);
+
+
 	hit.position = (a * hit.bary.x) + (b * hit.bary.y) + (c * hit.bary.z);
 
 
@@ -52,8 +58,6 @@ bool Triangle::rayHit(const Ray& ray, HitResult& hit, double currentTime) const 
 
 
 	hit.normal = badNormal;// transformNormal(badNormal, model);
-
-	//hit.normal = transformNormal(badNormal, dmat4(1.0));
 
 
 

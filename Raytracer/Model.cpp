@@ -66,7 +66,7 @@ void Model::loadModel(string modelName) {
     cout << "loading model " << fullPath.c_str() << endl;
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(fullPath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    const aiScene* scene = importer.ReadFile(fullPath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_DropNormals);
     this->originalTransform = mat4(1.0f);
     //this->transform = mat4(1.0f);
 
@@ -76,16 +76,23 @@ void Model::loadModel(string modelName) {
         aiString* fileName = new aiString();
 
 
-
+        printf("here1\n");
         aiReturn ret =  mat->GetTexture(aiTextureType_DIFFUSE, 0, fileName);
+        printf("filename: %s\n", fileName->C_Str());
+        if (fileName->length == 0) { 
+            this->modelMaterials.push_back(Material("Bug"));
+            continue;
+        }
         if (ret != AI_SUCCESS) {
             printf("Error getting the texture %s\n", fullPath.c_str());
             exit(-1);
         }
-        printf("filename: %s\n", fileName->C_Str());
 
         Texture* diffuse = loadTexture(string(fileName->C_Str()), this->directory);
-        this->modelMaterials.push_back(Material("PlainWhiteTees", diffuse->getVec3Sampler()));
+
+        //this->modelMaterials.push_back(Material("Glass", dvec3(0), diffuse->getVec3Sampler()));
+        this->modelMaterials.push_back(Material("PlainWhiteTees", dvec3(0), diffuse->getVec3Sampler()));
+
         //this->modelMaterials.push_back(Material("PlainWhiteTees"));
 
     }
