@@ -59,8 +59,8 @@ using namespace glm;
 
 
 #define MAX_PATH 50
-#define MAXBOUNCES 3u
-//#define OUTPUTFRAMES 151
+//#define MAXBOUNCES 3u
+//#define OUTPUTFRAMES 1
 //#define EVERYFRAME INFINITY
 #define CONCURRENT_FOR
 #define KDTRACE
@@ -68,25 +68,16 @@ using namespace glm;
 #define LIGHTING
 #define GLOBAL_LIGHTING
 
-#define LIGHT_MULTISAMPLES_N 1
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 15000
+#define MONTE_CARLO_SAMPLES 100
 
 #define PATH_TRACE
 
 
-#define LIGHT_CONTSTANT 1.0
-#define LIGHT_LINEAR 0.09
-#define LIGHT_QUADRATIC 0.032
-double getAttenuation(double distance) {
-	return (LIGHT_CONTSTANT + (LIGHT_LINEAR * distance) + (LIGHT_QUADRATIC * (distance * distance)));
-}
-
-
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 500;
-uint32_t frameY = 500;
+uint32_t frameX = 1000;
+uint32_t frameY = 1000;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -129,14 +120,9 @@ void frameBufferSizeCallback(GLFWwindow* window, uint64_t width, uint64_t height
 void clearBuffers() {
 	for (uint64_t i = 0; i < frameX * frameY; i++) {
 		frameBuffer[i] = clearColor;
-	}
-}
-void clearDrawBuffer() {
-	for (uint64_t i = 0; i < frameX * frameY; i++) {
 		drawBuffer[i] = clearColor;
 	}
 }
-
 bool frontFacing(vec3 a, vec3 b, vec3 c) {
 	mat3 m(a.x, b.x, c.x, a.y, b.y, c.y, 1.0f, 1.0f, 1.0f);
 	return glm::determinant(m) > 0;
@@ -184,23 +170,6 @@ void saveImage(string filepath, GLFWwindow* w) {
 	stbi_write_png((outDir + filepath).c_str(), width, height, nrChannels, buffer.data(), stride);
 }
 
-
-
-
-double shlicksApprox(double matIOR, vec3 normal, const vec3& viewVector, bool entering) {
-
-	double prevIOR = 1.0;
-	double newIOR = matIOR;
-	if (!entering) {
-		normal = -normal;
-		swap(prevIOR, newIOR);
-	}
-
-	double r0 = glm::pow((prevIOR - newIOR) / (prevIOR + newIOR), 2.0);
-
-	double rTheta = r0 + ((1 - r0) * (1 - glm::acos(glm::dot(normal, viewVector))));
-	return rTheta;
-}
 
 HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
 
@@ -270,7 +239,8 @@ dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, 
 
 	if (maxCloseness <= 0.0) {
 		printf("error calculating refraction angle\n");
-		exit(-1);
+		return incidentVector;
+		//exit(-1);
 	}
 
 	double cosA2 = glm::sqrt(1.0 - (sinA2 * sinA2));
@@ -280,27 +250,6 @@ dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, 
 	}
 
 	return glm::normalize(trueReflectDir);
-}
-
-
-
-
-
-
-constexpr double kj = 0.1;//given in the paper
-constexpr double kf = 1.12;
-constexpr double kg = 1.01;
-
-double F(double x) {
-	float num = (1 / (glm::pow(x - kf, 2.0))) - (1 / glm::pow(kf, 2.0));
-	float denom = (1 / glm::pow(1 - kf, 2.0)) - (1 / glm::pow(kf, 2.0));
-	return num / denom;
-}
-
-double G(double x) {
-	double num = (1 / glm::pow(1 - kg, 2.0)) - (1 / glm::pow(x - kg, 2.0));
-	double denom = (1 / glm::pow(1 - kg, 2.0)) - (1 / glm::pow(kg, 2.0));
-	return num / denom;
 }
 
 
@@ -330,6 +279,7 @@ dvec3 randomHemisphereVector(double u1, double u2)
 
 
 dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, uint32_t layer = 0) {
+	if (prd)printf("\n======================\npath tracing layer %u\n", layer);
 
 	if (layer > MAX_PATH) {
 		if (prd)printf("too deep of a path\n");
@@ -363,6 +313,10 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 	dvec3 newRayDir;
 	dvec3 newRayPos;
 
+	if (prd)printf("transD: %f, reflect: %f\n", transparencyDecider, reflectanceDecider);
+	if (prd)printf("reflectionRay: %s, %s\n", glm::to_string(newRayPos).c_str(), glm::to_string(newRayDir).c_str());
+
+
 
 	if (transparencyDecider < trans) {
 		if (prd)printf("case1\n");
@@ -376,16 +330,11 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 		newRayPos = minRayResult.position + (minRayResult.normal * bias);
 	} else {
 		if (prd)printf("case3\n");
-		//do {
-	//		newRayDir = glm::normalize(dvec3(randDubTwo(), randDubTwo(), randDubTwo()));
-		//} while (glm::dot(newRayDir, minRayResult.normal) < 0);
 
 		newRayDir = randomHemisphereVector(randDubTwo(), randDubTwo());
 
 		newRayPos = minRayResult.position + (minRayResult.normal * bias);
 	}
-	//newRayDir = glm::normalize(dvec3(-1.0, 0.005, 0.0));
-	//if (prd)printf("reflectionRay: %s, %s\n", glm::to_string(newRayPos).c_str(), glm::to_string(newRayDir).c_str());
 	Ray reflectionRay(newRayPos, newRayDir);
 
 
@@ -420,148 +369,11 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 
 	}
 
-	if (prd)printf("\n======================\npath tracing layer %u\n", layer);
-
-	if (prd)printf("transD: %f, reflect: %f\n", transparencyDecider, reflectanceDecider);
-	if (prd)printf("reflectionRay: %s, %s\n", glm::to_string(newRayPos).c_str(), glm::to_string(newRayDir).c_str());
-
 	if (prd)printf("thisradiance: %s\n", glm::to_string(thisRadiance).c_str());
 
-	if (prd)printf("returning %s\n", glm::to_string(thisRadiance).c_str());
-	if(prd)printf("min ray result depth: %f\n", minRayResult.depth);
-	//thisRadiance = thisRadiance * (1.0 / (minRayResult.depth * glm::max(minRayResult.depth, 1.0)));
-	if (prd)printf("no instead %s\n", glm::to_string(thisRadiance).c_str());
-
 	return thisRadiance;
-	
-
-
-
-	/*
-		shoot the ray
-		then you have the emmision of what it hit, and the distance over which that emmision travels
-		calculate the effect of that returned light on this object
-		calculate the local lighting situation of this object
-
-		rturn those two as the radiance result
-			
-	*/
-
 }
 
-bool rayTrace(const Ray& ray, const FrameInfo& fi, dvec3& colorResult, HitResult& minRayResult, double currentIOR = 1.0, uint32_t layer = 0)
-{
-
-
-	if (layer > MAXBOUNCES) {
-		//printf("terminating on max bounces\n");
-		colorResult = clearColor;
-		return false;
-	}
-
-	colorResult = dvec3(0);
-	minRayResult = shootRay(ray, fi); //ray is in camera space
-	if (minRayResult.shape != NULL) {
-		
-		//if(prd)printf("hit position: %s\n", glm::to_string(minRayResult.position).c_str(), glm::to_string(minRayResult.normal).c_str())
-		
-		Material mat = minRayResult.shape->mat;
-
-		double hitAngle = glm::acos(glm::dot(minRayResult.normal, ray.inverseDirection));
-
-		bool entering = hitAngle < (glm::pi<double>() / 2.0);
-
-
-		dvec3 directLightColorResult = dvec3(0.0);
-		dvec3 globalLightColorResult = dvec3(0.0);
-
-#ifdef LIGHTING
-		for (Light* light : fi.lights) {
-#ifdef LIGHT_MULTISAMPLES_N
-			int samples = light->multisample ? LIGHT_MULTISAMPLES_N *LIGHT_MULTISAMPLES_N : 1;
-#else
-			int samples = 1;
-#endif
-
-			for (int i = 0; i < samples; i++) {
-				Ray lightRay = light->getRay(minRayResult.position + (minRayResult.normal * bias));//should be in camera space
-				//if(prd) printf("light ray origin: %s, ray: %s\n", glm::to_string(lightRay.origin).c_str(), glm::to_string(lightRay.direction).c_str());
-				HitResult lightRayResult = shootRay(lightRay, fi);
-				double lightDistance = light->getDistance(lightRay);
-
-				if (lightDistance < lightRayResult.depth) {//shadows
-					double attenuation = light->getAttenuation(lightDistance, LIGHT_CONTSTANT, LIGHT_LINEAR, LIGHT_QUADRATIC);
-					directLightColorResult += lightingFunction(ray, lightRay, minRayResult, attenuation, mat, light->color);
-				}
-			}
-
-			directLightColorResult /= double(samples);
-#ifdef GLOBAL_LIGHTING
-			int globalSamples = MONTE_CARLO_SAMPLES * ((double(MAXBOUNCES)/double(layer+1))/double(MAXBOUNCES));
-			if (prd)printf("layer %u, global samples: %i\n", layer, globalSamples);
-			for (int i = 0; i < globalSamples; i++) {
-				dvec3 origin = minRayResult.position;
-				dvec3 rayDirection = randomHemisphericalVector(minRayResult.normal);
-				Ray lightRay(origin, rayDirection);
-
-				if(prd) printf("ray: origin: %s, direction: %s\n", glm::to_string(origin).c_str(), glm::to_string(rayDirection).c_str());
-				HitResult lightRayResult;
-				dvec3 colorResult;
-				bool lightRayHit = rayTrace(lightRay, fi, colorResult, lightRayResult, mat.getNI(minRayResult.uv), layer + 1);
-
-				double rayDistance = glm::distance(origin, lightRayResult.position);
-				double attenuation = light->getAttenuation(rayDistance, LIGHT_CONTSTANT, LIGHT_LINEAR, LIGHT_QUADRATIC);
-				if (lightRayHit) {
-					double attenuation = light->getAttenuation(rayDistance, LIGHT_CONTSTANT, LIGHT_LINEAR, LIGHT_QUADRATIC);
-
-					globalLightColorResult += lightingFunction(ray, lightRay, minRayResult, attenuation, mat, light->color);
-				}
-				else { 
-					globalLightColorResult += clearColor * 0.04;
-				}
-			}
-			globalLightColorResult /= double(MONTE_CARLO_SAMPLES);
-#endif
-			//globalLightColorResult = vec3(0.0);
-
-		}
-#endif LIGHTING
-
-
-		HitResult transparentRayHit;
-		dvec3 transparentRayResult = clearColor;
-		double kr = 1.0;
-//If it's transparent
-		if (glm::epsilonNotEqual(mat.getTransparency(minRayResult.uv), 0.0, glm::epsilon<double>())) {
-			bool internalOnly = false;
-
-			dvec3 refractionRayDir = getRefractionRay(glm::normalize(minRayResult.normal), glm::normalize(ray.direction), mat.getNI(minRayResult.uv), entering, internalOnly);
-			dvec3 refractionRayPos = minRayResult.position + (minRayResult.normal * (entering ? -1.0 : 1.0) * bias);
-
-			Ray refractionRay(refractionRayPos, refractionRayDir);
-			if (!internalOnly) {
-				kr = shlicksApprox(mat.getNI(minRayResult.uv), minRayResult.normal, ray.inverseDirection, entering);
-			}
-			rayTrace(refractionRay, fi, transparentRayResult, transparentRayHit, mat.getNI(minRayResult.uv), layer + 1);
-		}
-
-		
-		//TODO: this blending is not correct
-		double trans = mat.getTransparency(minRayResult.uv);
-
-#ifdef LIGHTING
-		colorResult = ((1.0 - trans) * (directLightColorResult + globalLightColorResult)) + ((1.0 - (1.0 - trans)) * transparentRayResult);
-#else
-		colorResult = ((1.0- trans) * mat.getColor(minRayResult.uv)) + ((1.0-(1.0 - trans))*transparentRayResult);
-#endif
-		//colorResult = ((1.0 - trans) * dvec3(minRayResult.depth/10.0)) + ((1.0 - (1.0 - trans)) * transparentRayResult);
-
-
-		return true;
-	}
-	colorResult = clearColor;
-	return false;
-}
 
 
 
@@ -581,6 +393,7 @@ AABB redoAABBs(FrameInfo& fi) {
 	}
 	return toReturn;
 }
+
 
 int main()
 {
@@ -664,21 +477,27 @@ int main()
 	//Material checkers("PlainWhiteTees");
 	Material checkers("PlainWhiteTees", dvec3(0.0, 0.0, 0.0), ryCheckers10x10);
 
-	Material white("PlainWhiteTees");
-	Material red("Red");
-	Material green("Green");
+	Material white = Material("PlainWhiteTees").setColor(dvec3(1.0, 1.0, 1.0));
+	Material red = Material("PlainWhiteTees").setColor(dvec3(1.0, 0.0, 0.0));
+	Material green = Material("PlainWhiteTees").setColor(dvec3(0.0, 1.0, 0.0));
+	Material blue = Material("PlainWhiteTees").setColor(dvec3(0.0, 0.0, 1.0));
+	Material yellow = Material("PlainWhiteTees").setColor(dvec3(1.0, 1.0, 0.0));
+	Material purple = Material("PlainWhiteTees").setColor(dvec3(1.0, 0.0, 1.0));
+	Material teal = Material("PlainWhiteTees").setColor(dvec3(1.0, 0.0, 1.0));
+	Material glass = Material("Glass");
+	Material mirrorA = Material("Mirror");
+	Material mirrorB = Material("MirrorB");
 
 
 	//Material pyt("PlainWhiteTees");
 
 
-	//bottom side
-	/*Vertex a(dvec3(-10.0, -10, -10.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 0.0));
-	Vertex b(dvec3(10.0, -10, -10.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 0.0));
-	Vertex c(dvec3(10.0, -10, 10.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 1.0));
-	Vertex d(dvec3(-10.0, -10, 10.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 1.0));
+	Vertex a(dvec3(-1000.0, -5, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 0.0));
+	Vertex b(dvec3(1000.0, -5, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 0.0));
+	Vertex c(dvec3(1000.0, -5, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 1.0));
+	Vertex d(dvec3(-1000.0, -5, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 1.0));
 
-
+	/*
 
 	//right side
 	Vertex aR(dvec3(10.0, 10, -10.0), dvec3(-1.0, 0.0, 0.0), dvec2(0.0, 1.0));
@@ -697,16 +516,17 @@ int main()
 
 
 	//shapes.push_back(new Triangle(a, b, c, checkers));
-	/*shapes.push_back(new Triangle(a, c, b, checkers));
-	shapes.push_back(new Triangle(a, d, c, checkers));
-	shapes.push_back(new Triangle(aR, bR, cR, checkers));
+	//shapes.push_back(new Triangle(a, c, b, checkers));
+	
+	//shapes.push_back(new Triangle(a, d, c, checkers));
+	/*shapes.push_back(new Triangle(aR, bR, cR, checkers));
 	shapes.push_back(new Triangle(aR, cR, dR, checkers));
 	shapes.push_back(new Triangle(aL, cL, bL, checkers));
 	shapes.push_back(new Triangle(aL, dL, cL, checkers));*/
 
 
 	double wallRadius = 100000.0;
-	double roomSize = 20.0;
+	double roomSize = 7.0;
 	double totalRad = wallRadius + roomSize;
 
 	shapes.push_back(new Sphere(dvec3(0.0, totalRad, 0.0), wallRadius, white, noMovement));
@@ -716,9 +536,16 @@ int main()
 	//shapes.push_back(new Sphere(dvec3(0.0, 0.0, totalRad), wallRadius, Material("PlainWhiteTees"), noMovement));
 	shapes.push_back(new Sphere(dvec3(0.0, 0.0, -totalRad), wallRadius, white, noMovement));
 
-	shapes.push_back(new Sphere(dvec3(0.0, 0.0, 0.0), 4.0, Material("Mirror"), noMovement));
+	//shapes.push_back(new Sphere(dvec3(0.0, 0.0, 0.0), 4.0, Material("Mirror"), noMovement));
 
-	shapes.push_back(new Sphere(dvec3(0.0, 69.0, 0.0), 50, Material("PlainWhiteTees", dvec3(0.5, 0.5, 0.5)), noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 10, 10.0), 5, Material("PlainWhiteTees", dvec3(1.0, 1.0, 1.0)), noMovement));
+
+	//shapes.push_back(new Sphere(dvec3(0.0, 3, 0.0), 3, red, noMovement));
+	//shapes.push_back(new Sphere(dvec3(-6.0, 3, 0.0), 3, green, noMovement));
+	//shapes.push_back(new Sphere(dvec3(6.0, 3, 0.0), 3, blue, noMovement));
+	//shapes.push_back(new Sphere(dvec3(8.0, 3, 4.0), 3, glass, noMovement));
+	//shapes.push_back(new Sphere(dvec3(-6.0, 8, -8.0), 3, mirrorA, noMovement));
+	//shapes.push_back(new Sphere(dvec3(6.0, 8, -8.0), 3, mirrorB, noMovement));
 
 
 	//shapes.push_back(new Sphere(dvec3(1.0, -4.2, 0.0), 2.0, Material("Glass"), noMovement));
@@ -731,7 +558,11 @@ int main()
 	//shapes.push_back(new Sphere(dvec3(0.0, 0, 0), 1.5, checkers, noMovement));
 
 	//addModel(shapes, "bunny", vec3(0.0, 0.0, 0.0), dvec3(mypifornow/2.0, 0.0, mypifornow/2.0));
-	//addModel(shapes, "backpack");
+
+
+	addModel(shapes, "lemon");
+
+
 	//shapes.push_back(new Sphere(dvec3(0, 0, 0), 1.0, Material("Bug"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(1, 1, -3), 1.0, Material("PlainWhiteTees"), noMovement));
 	//shapes.push_back(new Sphere(dvec3(-1, -1, 3), 1.0, Material("PlainWhiteTees"), noMovement));
@@ -775,7 +606,7 @@ int main()
 	uint32_t fps = 12;
 
 
-	time_t now;
+	/*time_t now;
 	time(&now);
 	char buf[sizeof "####-##-##-##-##-##"];
 	strftime(buf, sizeof buf, "%F-%H-%M-%S", gmtime(&now));
@@ -783,7 +614,7 @@ int main()
 
 
 	printf("about to create directory: %s\n", saveFileDirectory.c_str());
-	filesystem::create_directory(("out/" + saveFileDirectory).c_str());
+	filesystem::create_directory(("out/" + saveFileDirectory).c_str());*/
 #ifdef OUTPUTFRAMES
 
 	time_t now;
@@ -799,6 +630,7 @@ int main()
 
 	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES;) {
 		double currentFrame = double(frameCounter) / double(fps);
+		printf("frame counter: %u\n", frameCounter);
 #else
 
 	while (!glfwWindowShouldClose(window)) {
@@ -825,7 +657,7 @@ int main()
 			for (float f : frameTimes) {
 				sum += f;
 			}
-			printf("fps: %f\n", sum / 30.0f);
+			//printf("fps: %f\n", sum / 30.0f);
 		}
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
@@ -833,11 +665,13 @@ int main()
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-		//dvec3 eye = vec3(sin(currentFrame/3.0) * 25.0, 0.0, cos(currentFrame/3.0) * 25.0);
-		dvec3 eye = dvec3(0, 0.0, 50.0);
+		//dvec3 eye = vec3(sin(currentFrame/3.0) * 3.0, 1.0, cos(currentFrame/3.0) * 3.0);
+		dvec3 eye = dvec3(0, 0, 6);
 		dvec3 lookat = vec3(0.0, 0.0, 0.0);
+
+		printf("looking at %s\n", glm::to_string(lookat).c_str());
 		dvec3 camForward = glm::normalize(lookat - eye);
-		dvec3 camUp = glm::normalize(vec3(0.0, 1.0, 0.0));
+		dvec3 camUp = glm::normalize(vec3(0.0, 1, 0.0));
 		dvec3 camRight = glm::cross(camForward, camUp);
 		camUp = glm::cross(camRight, camForward);
 
@@ -847,16 +681,16 @@ int main()
 		double viewPortHeight = 2.0f;
 		double viewPortWidth = viewPortHeight * frameRatio;
 
-		double fov = 90;
+		double fov = 140;
 		double focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
 		//qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
 
 
 
-
+		clearBuffers();
 		for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
 			//clearDrawBuffer();
-			if (i % 1 == 0) {
+			if (i % 5 == 0) {
 				printf("on montecarlo %i\n", i);
 			}
 #ifdef CONCURRENT_FOR
@@ -867,7 +701,7 @@ int main()
 				uint32_t x = i % frameX;
 				uint32_t y = i / frameX;
 
-		        //prd = (x == 22 && y == 103);
+		        //prd = (x == 250 && y == 250);
 				double normalizedX = (double(x) / double(frameX)) - 0.5;
 				double normalizedY = (double(y) / double(frameY)) - 0.5;
 
@@ -916,8 +750,8 @@ int main()
 			processInput(window);
 			glfwPollEvents();
 			//cin.get();
-			if (i % 5 == 0) {
-				saveImage((std::to_string(i/1000) + ".png"), window);
+			if (i % 1 == 0) {
+				//saveImage((std::to_string((i/5)+1) + ".png"), window);
 			}
 		}
 

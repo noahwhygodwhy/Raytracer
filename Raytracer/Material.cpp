@@ -15,6 +15,7 @@ unordered_map<string, materialStats> materials = unordered_map<string, materialS
 	{"Bug", materialStats(dvec3(1.0, 0.0, 1.0), 100.0, 1.0, 0.0, 0.0, 1.0)},
 	{"Copper", materialStats(dvec3(0.7038,0.27048,0.0828), 100.0, 1.0, 0.0, 0.5, 0.5)},
 	{"Mirror", materialStats(dvec3(1.0, 1.0, 1.0), 50.0, 1.0, 0.0, 1.0, 1.0)},
+	{"MirrorB", materialStats(dvec3(0.7038,0.27048,0.0828), 50.0, 1.0, 0.0, 0.6, 0.6)},
 
 
 };
@@ -159,4 +160,8 @@ double Material::getSmoothness(dvec2 uv) const {
 
 dvec3 Material::getEmission() const {
 	return this->emission;
+}
+Material Material::setColor(dvec3 newColor) {
+	this->color = newColor;
+	return *this;
 }
