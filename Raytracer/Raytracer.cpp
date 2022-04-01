@@ -58,16 +58,16 @@ using namespace std::filesystem;
 using namespace glm;
 
 
-#define MAX_PATH 50
+#define MAX_PATH 250
 //#define OUTPUTPASSES 1
-//#define OUTPUTFRAMES 30
+#define OUTPUTFRAMES 189
 //#define EVERYFRAME INFINITY
 #define CONCURRENT_FOR
 #define KDTRACE
-#define CIN
+//#define CIN
 
-#define PIXEL_MULTISAMPLE_N 2
-#define MONTE_CARLO_SAMPLES 10
+#define PIXEL_MULTISAMPLE_N 4
+#define MONTE_CARLO_SAMPLES 256
 
 
 //#define BASIC_BITCH
@@ -75,8 +75,8 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 500;
-uint32_t frameY = 500;
+uint32_t frameX = 1000;
+uint32_t frameY = 1000;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -88,7 +88,7 @@ double lastFrame = 0.0f; // Time of last frame
 string saveFileDirectory = "";
 
 
-constexpr double bias = 1e-3;
+constexpr double bias = 1e-4;
 
 
 struct FrameInfo {
@@ -165,7 +165,7 @@ dvec3 randomSpecularVector(dvec3 normal) {
 	normal = glm::normalize(normal);
 	do {
 		outVec = glm::normalize(dvec3(randDubThree(), randDubThree(), randDubThree()));
-	} while (glm::dot(normal, outVec) < 0.9);
+	} while (glm::dot(normal, outVec) < 0.7);
 	return outVec;
 }
 
@@ -524,10 +524,10 @@ int main()
 	//Material pyt("PlainWhiteTees");
 
 
-	Vertex a(dvec3(-1000.0, 0, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 0.0));
-	Vertex b(dvec3(1000.0, 0, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 0.0));
-	Vertex c(dvec3(1000.0, 0, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 1.0));
-	Vertex d(dvec3(-1000.0, 0, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 1.0));
+	Vertex a(dvec3(-1000.0, -20, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 0.0));
+	Vertex b(dvec3(1000.0, -20, -1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 0.0));
+	Vertex c(dvec3(1000.0, -20, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(1.0, 1.0));
+	Vertex d(dvec3(-1000.0, -20, 1000.0), dvec3(0.0, 1.0, 0.0), dvec2(0.0, 1.0));
 
 	/*
 
@@ -567,20 +567,25 @@ int main()
 
 
 
-	shapes.push_back(new Sphere(dvec3(0.0, 15, 0.0), 5, Material("PlainWhiteTees", dvec3(3.0, 3.0, 3.0)), noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 10.0, 5.0), 5, Material("PlainWhiteTees", dvec3(1.0, 1.0, 1.0)), noMovement));
+
+	shapes.push_back(new Sphere(dvec3(0.0, 0, 4.0), 2, glass, noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 0, -4.0), 2, mirrorA, noMovement));
+	
+
 
 	//shapes.push_back(new Sphere(dvec3(0.0, 3, 0.0), 3, red, noMovement));
 	//shapes.push_back(new Sphere(dvec3(-6.0, 3, 0.0), 3, green, noMovement));
 	//shapes.push_back(new Sphere(dvec3(6.0, 3, 0.0), 3, blue, noMovement));
-	shapes.push_back(new Sphere(dvec3(0.0, 5, 8.0), 2, glass, noMovement));
-	shapes.push_back(new Sphere(dvec3(-6.0, 8, -8.0), 3, mirrorA, noMovement));
+	//shapes.push_back(new Sphere(dvec3(0.0, 5, 8.0), 2, glass, noMovement));
+	//shapes.push_back(new Sphere(dvec3(-6.0, 8, -8.0), 3, mirrorA, noMovement));
 	//shapes.push_back(new Sphere(dvec3(6.0, 8, -8.0), 3, glass, noMovement));
 
 
     //shapes.push_back(new Sphere(dvec3(1.0, -4.2, 0.0), 2.0, Material("Glass"), noMovement));
 
 	constexpr double mypifornow = glm::pi<double>();
-	//addModel(shapes, "brick2");
+	addModel(shapes, "backpack");
 	//addModel(shapes, "bunny", vec3(-0.0, 0.0, -0.0));
 
 	vector<Light*> lights;
@@ -606,7 +611,7 @@ int main()
 	float frameTimes[30](0);
 	int lastSecondFrameCount = -1;
 
-	uint32_t fps = 4;
+	uint32_t fps = 30;
 
 
 	/*time_t now;
@@ -669,8 +674,8 @@ int main()
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-		//dvec3 eye = vec3(sin(currentFrame) * 3.0, 1.0, cos(currentFrame) * 3.0);
-		dvec3 eye = dvec3(0, 5, 25);
+		dvec3 eye = vec3(sin(currentFrame) * 8, 2, cos(currentFrame) * 8);
+		//dvec3 eye = dvec3(0, 5, 25);
 
 		dvec3 lookat = vec3(0.0, 0.0, 0.0);
 		//lookat = vec3(0.0, -5.0, 15);
