@@ -41,7 +41,7 @@ public:
     ~Model();
     mat4 transform;
     vector<Triangle*> children;
-    vector<Material> modelMaterials;
+    vector<Material*> modelMaterials;
 private:
 
     mat4 originalTransform;

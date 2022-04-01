@@ -122,7 +122,7 @@ bool AABB::rayAABB(const Ray& ray)const {
 }
 
 
-Shape::Shape(AABB boundingBox, const Material& material, const dmat4& model)
+Shape::Shape(AABB boundingBox, Material* material, const dmat4& model)
 {
 	this->model = model;
 	this->mat = material;

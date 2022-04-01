@@ -27,7 +27,7 @@ AABB makeBoundingBox(double sphereRadius, double focalLength, double ior) {
 }*/
 
 AABB Biconvex::setupSpheres(const dvec3 origin, dvec3 forward, double sphereRadius, double focalLength) {
-	Material glass("Glass");
+	Material*glass = new Material("Glass");
 	this->d = solveLensForD(sphereRadius, focalLength, 1.54);//TODO: this can't be hardcoded, screw the focal length
 
 

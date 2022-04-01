@@ -80,7 +80,7 @@ void Model::loadModel(string modelName) {
         aiReturn ret =  mat->GetTexture(aiTextureType_DIFFUSE, 0, fileName);
         printf("filename: %s\n", fileName->C_Str());
         if (fileName->length == 0) { 
-            this->modelMaterials.push_back(Material("Bug"));
+            this->modelMaterials.push_back(new Material("Bug"));
             continue;
         }
         if (ret != AI_SUCCESS) {
@@ -91,7 +91,7 @@ void Model::loadModel(string modelName) {
         Texture* diffuse = loadTexture(string(fileName->C_Str()), this->directory);
 
         //this->modelMaterials.push_back(Material("Glass", dvec3(0), diffuse->getVec3Sampler()));
-        this->modelMaterials.push_back(Material("PlainWhiteTees", dvec3(0), diffuse->getVec3Sampler()));
+        this->modelMaterials.push_back(new Material("PlainWhiteTees", dvec3(0), diffuse->getVec3Sampler()));
 
         //this->modelMaterials.push_back(Material("PlainWhiteTees"));
 
@@ -177,11 +177,14 @@ vector<Triangle*> Model::processMesh(aiMesh* mesh, const aiScene* scene, const m
             indices.push_back(face.mIndices[j]);
         }
     }
-    Material m("PlainWhiteTees");
+    Material* m;
 
     if (mesh->mMaterialIndex >= 0)
     {
         m = this->modelMaterials.at(mesh->mMaterialIndex);
+    }
+    else {
+        m = new Material("PlainWhiteTees");
     }
 
     for (uint i = 0; i < indices.size(); i += 3) {

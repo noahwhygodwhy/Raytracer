@@ -161,7 +161,7 @@ double Material::getSmoothness(dvec2 uv) const {
 dvec3 Material::getEmission() const {
 	return this->emission;
 }
-Material Material::setColor(dvec3 newColor) {
+Material* Material::setColor(dvec3 newColor) {
 	this->color = newColor;
-	return *this;
+	return this;
 }

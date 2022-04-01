@@ -49,7 +49,7 @@ class Triangle : public Shape {
 	Vertex vertices[3];
 
 public:
-	Triangle(Vertex a, Vertex b, Vertex c, Material material)
+	Triangle(Vertex a, Vertex b, Vertex c, Material* material)
 		: Shape(AABB(glm::min(a.position, glm::min(b.position, c.position)),
 			glm::max(a.position, glm::max(b.position, c.position))), material)
 	{

@@ -52,13 +52,13 @@ enum Side {
 class Shape
 {
 public:
-	Shape(AABB boundingBox, const Material& material = Material("Bug"), const dmat4& model = dmat4(1.0));
+	Shape(AABB boundingBox, Material* material = NULL, const dmat4& model = dmat4(1.0));
 	~Shape();
 	bool rayAABB(const Ray& ray)const;
 	virtual void redoAABB(const double currentTime) = 0;
 	virtual bool rayHit(const Ray& ray, HitResult& hit, double currentTime)const = 0;
 	dmat4 model;
-	Material mat;
+	Material* mat;
 	AABB boundingBox;
 protected:
 private:

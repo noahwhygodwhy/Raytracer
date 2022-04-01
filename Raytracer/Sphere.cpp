@@ -3,7 +3,7 @@
 using namespace std;
 using namespace glm;
 
-Sphere::Sphere(const dvec3& origin, double radius, Material mat, dmat4(*movementFunction)(double currentTime))
+Sphere::Sphere(const dvec3& origin, double radius, Material* mat, dmat4(*movementFunction)(double currentTime))
 	: Shape(AABB(origin - dvec3(radius), origin + dvec3(radius)), mat)
 	, Animatable(movementFunction)
 {

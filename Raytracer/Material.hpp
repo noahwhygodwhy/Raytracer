@@ -26,7 +26,7 @@ class Material {
 
 public:
 	Material();
-	Material setColor(dvec3 newColor);
+	Material* setColor(dvec3 newColor);
 	Material(
 		dvec3 color,
 		double ns = 100.0,

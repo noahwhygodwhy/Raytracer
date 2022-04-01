@@ -66,7 +66,7 @@ using namespace glm;
 #define KDTRACE
 //#define CIN
 
-#define PIXEL_MULTISAMPLE_N 4
+#define PIXEL_MULTISAMPLE_N 1
 #define MONTE_CARLO_SAMPLES 256
 
 
@@ -75,8 +75,8 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 1000;
-uint32_t frameY = 1000;
+uint32_t frameX = 500;
+uint32_t frameY = 500;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -315,11 +315,11 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 #endif
 
 	dvec2 uv = minRayResult.uv;
-	Material mat = minRayResult.shape->mat;
+	Material* mat = minRayResult.shape->mat;
 
-	double trans = mat.getTransparency(uv);
-	double smooth = mat.getSmoothness(uv);
-	double metal = mat.getMetalness(uv);
+	double trans = mat->getTransparency(uv);
+	double smooth = mat->getSmoothness(uv);
+	double metal = mat->getMetalness(uv);
 
 	double transparencyDecider = randDubTwo();
 	double reflectanceDecider = randDubTwo();
@@ -345,7 +345,7 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 	if (transparencyDecider < trans) {
 		if (prd)printf("case1\n");
 
-		newRayDir = getRefractionRay(glm::normalize(minRayResult.normal), glm::normalize(ray.direction), mat.getNI(minRayResult.uv), entering, internalOnly);
+		newRayDir = getRefractionRay(glm::normalize(minRayResult.normal), glm::normalize(ray.direction), mat->getNI(minRayResult.uv), entering, internalOnly);
 		newRayPos = minRayResult.position + (minRayResult.normal * (entering ? -1.0 : 1.0) * bias);
 	}
 	else if (reflectanceDecider < smooth) {
@@ -370,11 +370,11 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 	Ray reflectionRay(newRayPos, newRayDir);
 
 
-	dvec3 thisRadiance = mat.getEmission();
+	dvec3 thisRadiance = mat->getEmission();
 	if (thisRadiance == dvec3(0.0, 0.0, 0.0)) {
 		if(prd)printf("radiance is 0\n");
 		
-		downstreamRadiance = pathTrace(reflectionRay, fi, mat.getNI(uv), layer + 1);
+		downstreamRadiance = pathTrace(reflectionRay, fi, mat->getNI(uv), layer + 1);
 
 		//calculate this objects emmision, both a reflection of the material, and any emmision
 
@@ -394,10 +394,10 @@ dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, ui
 		double ks = smooth;
 		double kd = 1.0 - ks;
 
-		dvec3 diffuse = kd * diff * downstreamRadiance * mat.getColor(uv);
-		dvec3 specular = ks * spec * downstreamRadiance * mat.getColor(uv);
+		dvec3 diffuse = kd * diff * downstreamRadiance * mat->getColor(uv);
+		dvec3 specular = ks * spec * downstreamRadiance * mat->getColor(uv);
 
-		thisRadiance += (downstreamRadiance* mat.getColor(uv));
+		thisRadiance += (downstreamRadiance* mat->getColor(uv));
 
 	}
 
@@ -507,18 +507,18 @@ int main()
 
 
 	//Material checkers("PlainWhiteTees");
-	Material checkers("PlainWhiteTees", dvec3(0.0, 0.0, 0.0), ryCheckers10x10);
+	Material* checkers = new Material("PlainWhiteTees", dvec3(0.0, 0.0, 0.0), ryCheckers10x10);
 
-	Material white = Material("PlainWhiteTees").setColor(dvec3(1.0, 1.0, 1.0));
-	Material red = Material("PlainWhiteTees").setColor(dvec3(1.0, 0.0, 0.0));
-	Material green = Material("PlainWhiteTees").setColor(dvec3(0.0, 1.0, 0.0));
-	Material blue = Material("PlainWhiteTees").setColor(dvec3(0.0, 0.0, 1.0));
-	Material yellow = Material("PlainWhiteTees").setColor(dvec3(1.0, 1.0, 0.0));
-	Material purple = Material("PlainWhiteTees").setColor(dvec3(1.0, 0.0, 1.0));
-	Material teal = Material("PlainWhiteTees").setColor(dvec3(1.0, 0.0, 1.0));
-	Material glass = Material("Glass");
-	Material mirrorA = Material("Mirror");
-	Material mirrorB = Material("MirrorB");
+	Material* white = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 1.0, 1.0));
+	Material* red = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 0.0, 0.0));
+	Material* green = (new Material("PlainWhiteTees"))->setColor(dvec3(0.0, 1.0, 0.0));
+	Material* blue = (new Material("PlainWhiteTees"))->setColor(dvec3(0.0, 0.0, 1.0));
+	Material* yellow = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 1.0, 0.0));
+	Material* purple = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 0.0, 1.0));
+	Material* teal = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 0.0, 1.0));
+	Material* glass = new Material("Glass");
+	Material* mirrorA = new Material("Mirror");
+	Material* mirrorB = new Material("MirrorB");
 
 
 	//Material pyt("PlainWhiteTees");
@@ -567,7 +567,7 @@ int main()
 
 
 
-	shapes.push_back(new Sphere(dvec3(0.0, 10.0, 5.0), 5, Material("PlainWhiteTees", dvec3(1.0, 1.0, 1.0)), noMovement));
+	shapes.push_back(new Sphere(dvec3(0.0, 10.0, 5.0), 5, new Material("PlainWhiteTees", dvec3(1.0, 1.0, 1.0)), noMovement));
 
 	shapes.push_back(new Sphere(dvec3(0.0, 0, 4.0), 2, glass, noMovement));
 	shapes.push_back(new Sphere(dvec3(0.0, 0, -4.0), 2, mirrorA, noMovement));
