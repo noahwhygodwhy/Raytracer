@@ -9,15 +9,13 @@
 //lol this is bad
 unordered_map<string, materialStats> materials = unordered_map<string, materialStats>{
 	{"Glass", materialStats(dvec3(1.0, 1.0, 1.0), 50.0, 1.54, 0.8, 0.2, 1.0)},
-	{"PlainWhiteTees", materialStats(dvec3(1.0, 1.0, 1.0), 100.0, 1.0, 0.0, 0.5, 0.5)},
-	{"Red", materialStats(dvec3(1.0, 0.0, 0.0), 100.0, 1.0, 0.0, 0.3, 0.0)},
+	{"PlainWhiteTees", materialStats(dvec3(1.0, 1.0, 1.0), 100.0, 1.0, 0.0, 0.0, 0.0)},
+	{"Red", materialStats(dvec3(1.0, 0.0, 0.0), 2.0, 1.0, 0.0, 0.0, 0.5)},
 	{"Green", materialStats(dvec3(0.0, 1.0, 0.0), 100.0, 1.0, 0.0, 0.6, 0.0)},
 	{"Bug", materialStats(dvec3(1.0, 0.0, 1.0), 100.0, 1.0, 0.0, 0.0, 1.0)},
 	{"Copper", materialStats(dvec3(0.7038,0.27048,0.0828), 100.0, 1.0, 0.0, 0.5, 0.5)},
-	{"Mirror", materialStats(dvec3(1.0, 1.0, 1.0), 50.0, 1.0, 0.0, 1.0, 1.0)},
+	{"Mirror", materialStats(dvec3(1.0, 1.0, 1.0), 50.0, 0.13511, 0.0, 1.0, 1.0)},
 	{"MirrorB", materialStats(dvec3(0.7038,0.27048,0.0828), 50.0, 1.0, 0.0, 0.6, 0.6)},
-
-
 };
 
 

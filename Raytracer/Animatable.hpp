@@ -14,7 +14,9 @@ dmat4 noMovement(double currentTime);
 dmat4 oscilateX(double currentTime);
 dmat4 oscilateY(double currentTime);
 dmat4 rotateY(double currentTime);
-
+dmat4 circle0(double currentTime);
+dmat4 circle1(double currentTime);
+dmat4 circle2(double currentTime);
 class Animatable
 {
 public:
