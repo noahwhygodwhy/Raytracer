@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -145,22 +145,20 @@
   <ItemGroup>
     <ClCompile Include="Animatable.cpp" />
     <ClCompile Include="Biconvex.cpp" />
+    <ClCompile Include="CookTorrance.cpp" />
     <ClCompile Include="CoordinateHelpers.cpp" />
-    <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="GGX.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="KDTree.cpp" />
-    <ClCompile Include="Light.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Model.hpp" />
-    <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="Procedural.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Raytracer.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Shape.cpp" />
     <ClCompile Include="Sphere.cpp" />
-    <ClCompile Include="SquareLight.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Triangle.cpp" />
   </ItemGroup>
@@ -170,16 +168,15 @@
     <None Include="vert.glsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SquareLight.hpp" />
+    <ClInclude Include="CookTorrance.hpp" />
+    <ClInclude Include="GGX.hpp" />
+    <ClInclude Include="Raytracer.hpp" />
     <ClInclude Include="Animatable.hpp" />
     <ClInclude Include="Biconvex.hpp" />
     <ClInclude Include="CoordinateHelpers.hpp" />
-    <ClInclude Include="DirectionalLight.hpp" />
     <ClInclude Include="glad.h" />
     <ClInclude Include="KDTree.hpp" />
-    <ClInclude Include="Light.hpp" />
     <ClInclude Include="Material.hpp" />
-    <ClInclude Include="PointLight.hpp" />
     <ClInclude Include="Procedural.hpp" />
     <ClInclude Include="Shape.hpp" />
     <ClInclude Include="Ray.hpp" />

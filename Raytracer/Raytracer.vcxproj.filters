@@ -90,17 +90,11 @@
     <ClCompile Include="KDTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SquareLight.cpp">
-      <Filter>Source Files\Lights</Filter>
+    <ClCompile Include="GGX.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PointLight.cpp">
-      <Filter>Source Files\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Light.cpp">
-      <Filter>Source Files\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="DirectionalLight.cpp">
-      <Filter>Source Files\Lights</Filter>
+    <ClCompile Include="CookTorrance.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -140,15 +134,6 @@
     <ClInclude Include="Sphere.hpp">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="DirectionalLight.hpp">
-      <Filter>Header Files\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="PointLight.hpp">
-      <Filter>Header Files\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Light.hpp">
-      <Filter>Header Files\Lights</Filter>
-    </ClInclude>
     <ClInclude Include="Animatable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -167,8 +152,14 @@
     <ClInclude Include="CoordinateHelpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SquareLight.hpp">
-      <Filter>Header Files\Lights</Filter>
+    <ClInclude Include="Raytracer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GGX.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CookTorrance.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
