@@ -40,12 +40,6 @@ string saveFileDirectory = "";
 constexpr double bias = 1e-4;
 
 
-
-
-
-
-
-
 void frameBufferSizeCallback(GLFWwindow* window, uint64_t width, uint64_t height) {
 	glViewport(0, 0, GLsizei(width), GLsizei(height));
 }
@@ -375,9 +369,248 @@ AABB redoAABBs(FrameInfo& fi) {
 }
 
 
+
+
+
 int main()
 {
+	//cl_device_id device_id = NULL;
+	//cl_context context = NULL;
+	//cl_command_queue command_queue = NULL;
+	//cl_mem memobj = NULL;
+	//cl_program program = NULL;
+	//cl_kernel kernel = NULL;
+	//cl_platform_id platform_id = NULL;
+	//cl_uint ret_num_devices;
+	//cl_uint ret_num_platforms;
+	//cl_int ret;
 
+	const int NUM_ELEMENTS = 10;
+	int* firstIn = new int[NUM_ELEMENTS]();
+	for (int i = 0; i < NUM_ELEMENTS; i++) {
+		firstIn[i] = i;
+	}
+	int* firstOut = new int[NUM_ELEMENTS]();
+
+	size_t dataSize = NUM_ELEMENTS * sizeof(int);
+
+
+
+
+	cl_uint numPlatforms;
+	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetPlatformIDs failed (1)\n");
+	printf("Number of Platforms = %d\n", numPlatforms);
+	cl_platform_id* platforms = new cl_platform_id[numPlatforms];
+	status = clGetPlatformIDs(numPlatforms, platforms, NULL);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetPlatformIDs failed (2)\n");
+	cl_uint numDevices;
+	cl_device_id* devices;
+
+
+
+	int i = 0;
+	
+	printf("Platform #%d:\n", i);
+	size_t size;
+	char* str;
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, NULL, &size);
+	str = new char[size];
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, size, str, NULL);
+	printf("\tName = '%s'\n", str);
+	delete[] str;
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, NULL, &size);
+	str = new char[size];
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, size, str, NULL);
+	printf("\tVendor = '%s'\n", str);
+	delete[] str;
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 0, NULL, &size);
+	str = new char[size];
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, size, str, NULL);
+	printf("\tVersion = '%s'\n", str);
+	delete[] str;
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, 0, NULL, &size);
+	str = new char[size];
+	clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, size, str, NULL);
+	printf("\tProfile = '%s'\n", str);
+	delete[] str;
+	// find out how many devices are attached to each platform and get their ids:
+	status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetDeviceIDs failed (2)\n");
+	devices = new cl_device_id[numDevices];
+	status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetDeviceIDs failed (2)\n");
+	for (int j = 0; j < (int)numDevices; j++)
+	{
+		printf("\tDevice #%d:\n", j);
+		size_t size;
+		cl_device_type type;
+		cl_uint ui;
+		size_t sizes[3] = { 0, 0, 0 };
+		clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
+		printf("\t\tType = 0x%04x = ", type);
+		switch (type)
+		{
+		case CL_DEVICE_TYPE_CPU:
+			printf("CL_DEVICE_TYPE_CPU\n");
+			break;
+		case CL_DEVICE_TYPE_GPU:
+			printf("CL_DEVICE_TYPE_GPU\n");
+			break;
+		case CL_DEVICE_TYPE_ACCELERATOR:
+			printf("CL_DEVICE_TYPE_ACCELERATOR\n");
+			break;
+		default:
+			printf("Other...\n");
+			break;
+		}
+		clGetDeviceInfo(devices[j], CL_DEVICE_VENDOR_ID, sizeof(ui), &ui, NULL);
+		printf("\t\tDevice Vendor ID = 0x%04x\n", ui);
+		clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ui), &ui, NULL);
+		printf("\t\tDevice Maximum Compute Units = %d\n", ui);
+		clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(ui), &ui, NULL);
+		printf("\t\tDevice Maximum Work Item Dimensions = %d\n", ui);
+		clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(sizes), sizes, NULL);
+		printf("\t\tDevice Maximum Work Item Sizes = %d x %d x %d\n", sizes[0], sizes[1], sizes[2]);
+		clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size), &size, NULL);
+		printf("\t\tDevice Maximum Work Group Size = %d\n", size);
+		clGetDeviceInfo(devices[j], CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(ui), &ui, NULL);
+		printf("\t\tDevice Maximum Clock Frequency = %d MHz\n", ui);
+
+		size_t extensionSize;
+		clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, 0, NULL, &extensionSize);
+		char* extensions = new char[extensionSize];
+		clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, extensionSize, extensions, NULL);
+		fprintf(stderr, "\nDevice Extensions:\n");
+		for (int i = 0; i < (int)strlen(extensions); i++)
+		{
+			if (extensions[i] == ' ')
+				extensions[i] = '\n';
+		}
+		fprintf(stderr, "%s\n", extensions);
+		delete[] extensions;
+		
+	}
+
+	cl_device_id device = devices[0];
+	cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
+
+	cl_command_queue_properties* qProperties =new cl_command_queue_properties(CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
+
+	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
+	//cl_command_queue cmdQueue = clCreateCommandQueue(context, device, 0, &status);
+
+	cl_mem dA = clCreateBuffer(context, CL_MEM_READ_ONLY, dataSize, NULL, &status);
+	cl_mem dB = clCreateBuffer(context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status);
+
+	status = clEnqueueWriteBuffer(cmdQueue, dA, CL_FALSE, 0, dataSize, firstIn, 0, NULL, NULL);
+
+	long unsigned int length;
+	ifstream stream("Renderer.cl", ios::in | ios::ate | ios::binary);
+	//stream.seekg(0, ios::end);
+	length = long unsigned int(stream.tellg());
+	stream.seekg(0, ios::beg);
+	char* shaderSource = new char[length + 1];
+	shaderSource[length] = '\0';
+	const char** shaderSourcesArray = new const char* [1];
+	stream.read(shaderSource, length);
+	printf("shader source: %s\n", shaderSource);
+
+	shaderSourcesArray[0] = shaderSource;
+
+	cl_program program = clCreateProgramWithSource(context, 1, shaderSourcesArray, NULL, &status);
+
+	const char* options = { "" };
+	status = clBuildProgram(program, 1, &device, options, NULL, NULL);
+	if (status != CL_SUCCESS)
+	{ // retrieve and print the error messages:
+		size_t size;
+		clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &size);
+		cl_char* log = new cl_char[size];
+		clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, size, log, NULL);
+		printf("clBuildProgram failed:\n%s\n", log);
+		exit(-1);
+	}
+
+	cl_kernel kernel = clCreateKernel(program, "square", &status );
+	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &dA);
+	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &dB);
+
+
+	size_t globalWorkSize[3] = { NUM_ELEMENTS, 1, 1 };
+	size_t localWorkSize[3] = { 1, 1, 1 };
+
+	status = clEnqueueNDRangeKernel(cmdQueue, kernel, 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+	
+	status = clEnqueueReadBuffer(cmdQueue, dB, CL_TRUE, 0, dataSize, firstOut, 0, NULL, NULL);
+
+	for (int l = 0; l < NUM_ELEMENTS; l++) {
+		printf("%i -> %i\n", firstIn[l], firstOut[l]);
+	}
+
+	clReleaseKernel(kernel);
+	clReleaseProgram(program);
+	clReleaseCommandQueue(cmdQueue);
+	clReleaseMemObject(dA);
+	clReleaseMemObject(dB);
+
+	delete[] firstIn;
+	delete[] firstOut;
+
+
+	exit(0);
+
+
+	
+	//ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
+	//ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &device_id, &ret_num_devices);
+	//context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &ret);
+
+	///* Create Command Queue */
+	//command_queue = clCreateCommandQueueWithProperties(context, device_id, 0, &ret);
+
+	///* Create Memory Buffer */
+	//memobj = clCreateBuffer(context, CL_MEM_READ_WRITE, 1 * sizeof(int), NULL, &ret);
+
+	///* Create Kernel Program from the source */
+	//program = clCreateProgramWithSource(context, 1, (const char**)&shaderSource,
+	//	(const size_t*)&shaderSource, &ret);
+
+	///* Build Kernel Program */
+	//ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+
+	///* Create OpenCL Kernel */
+	//kernel = clCreateKernel(program, "hello", &ret);
+
+	///* Set OpenCL Kernel Parameters */
+	//ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&memobj);
+
+	///* Execute OpenCL Kernel */
+	//ret = clEnqueueNDRangeKernel(command_queue, kernel, 0, NULL, NULL, NULL, NULL, NULL, NULL);
+	//
+
+	///* Copy results from the memory buffer */
+	//ret = clEnqueueReadBuffer(command_queue, memobj, CL_TRUE, 0,
+	//	1 * sizeof(int), firstIn, 0, NULL, NULL);
+
+	///* Display Result */
+	//printf("%i\n", *firstOut);
+
+	/* Finalization */
+	/*ret = clFlush(command_queue);
+	ret = clFinish(command_queue);
+	ret = clReleaseKernel(kernel);
+	ret = clReleaseProgram(program);
+	ret = clReleaseMemObject(memobj);
+	ret = clReleaseCommandQueue(command_queue);
+	ret = clReleaseContext(context);
+
+	free(shaderSource);*/
+	exit(-1);
 
 	/*dvec3 q(1.0, 0.0, 0.0);//straight right
 	dvec3 w(1.0, 1.0, 0.0);//diagonal up right

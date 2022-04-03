@@ -165,6 +165,7 @@
   <ItemGroup>
     <None Include="frag.glsl" />
     <None Include="packages.config" />
+    <None Include="Renderer.cl" />
     <None Include="vert.glsl" />
   </ItemGroup>
   <ItemGroup>

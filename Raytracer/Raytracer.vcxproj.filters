@@ -40,6 +40,9 @@
     <Filter Include="Source Files\Lights">
       <UniqueIdentifier>{6072426a-7e51-40fb-9810-c5e21d472296}</UniqueIdentifier>
     </Filter>
+    <Filter Include="OpenCL">
+      <UniqueIdentifier>{b276145d-abbe-4115-83c6-174e1d1802f4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raytracer.cpp">
@@ -104,6 +107,9 @@
     </None>
     <None Include="vert.glsl">
       <Filter>Source Files</Filter>
+    </None>
+    <None Include="Renderer.cl">
+      <Filter>OpenCL</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
