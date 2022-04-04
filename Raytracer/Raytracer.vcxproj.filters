@@ -19,9 +19,6 @@
     <Filter Include="Header Files\Objects">
       <UniqueIdentifier>{198a7444-a970-4966-8fb3-23dcd77a2d9f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Lights">
-      <UniqueIdentifier>{639547a9-c153-456c-83a6-a98865bb1ab9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Objects\lenses">
       <UniqueIdentifier>{d36ee5a6-e005-4408-a799-937b211ac8cd}</UniqueIdentifier>
     </Filter>
@@ -93,11 +90,11 @@
     <ClCompile Include="KDTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GGX.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CookTorrance.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clTypeDefs.hpp">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -159,9 +156,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Raytracer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GGX.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CookTorrance.hpp">

@@ -31,8 +31,6 @@
 #include "stb_image_write.h"
 
 
-
-
 #include "Shader.hpp"
 #include "Model.hpp"
 //#include "WorkerPool.hpp"
@@ -50,21 +48,19 @@
 #include "Sphere.hpp"
 #include "Biconvex.hpp"
 
-
-
 using namespace std;
 using namespace std::filesystem;
 using namespace glm;
 
 
-struct FrameInfo {
+/*struct FrameInfo {
 	vector<Shape*> shapes;
 	//vector<Light*> lights;
 	KDNode* kdTree;
 	//dmat4 view;
 	dvec3 camPosition;
 	double currentTime;
-};
+};*/
 
 void processInput(GLFWwindow* window)
 {
@@ -74,8 +70,8 @@ void processInput(GLFWwindow* window)
 }
 
 
-fvec3* frameBuffer;
-fvec3* drawBuffer;
+fvec4* frameBuffer;
+fvec4* drawBuffer;
 
 
 #endif

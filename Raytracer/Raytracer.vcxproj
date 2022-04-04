@@ -145,9 +145,9 @@
   <ItemGroup>
     <ClCompile Include="Animatable.cpp" />
     <ClCompile Include="Biconvex.cpp" />
+    <ClCompile Include="clTypeDefs.hpp" />
     <ClCompile Include="CookTorrance.cpp" />
     <ClCompile Include="CoordinateHelpers.cpp" />
-    <ClCompile Include="GGX.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="Material.cpp" />
@@ -170,7 +170,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CookTorrance.hpp" />
-    <ClInclude Include="GGX.hpp" />
     <ClInclude Include="Raytracer.hpp" />
     <ClInclude Include="Animatable.hpp" />
     <ClInclude Include="Biconvex.hpp" />
