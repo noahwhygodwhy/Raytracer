@@ -31,11 +31,11 @@ float3 fresnelSchlick(float cosT, float3 f0)
 	return f0 + (1.0f - f0) * pow(1.0f - cosT, 5);
 }
 
-float k = 4;
+#define fK 4.0f //absorbtion coefficient
 
 float fConductor(float matIOR, float3 i, float3 o) {
-	float numerator = pow(matIOR - 1.0, 2) + (4.0 * matIOR * pow(1.0 - dot(i, o), 5)) + pow(k, 2);
-	float denom = pow(matIOR + 1.0, 2) + pow(k, 2);
+	float numerator = pow(matIOR - 1.0, 2) + (4.0 * matIOR * pow(1.0 - dot(i, o), 5)) + pow(fK, 2);
+	float denom = pow(matIOR + 1.0, 2) + pow(fK, 2);
 
 	return numerator / denom;
 

@@ -486,11 +486,10 @@ int main()
 
 	cl_device_id device = devices[0];
 	cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
-
-	cl_command_queue_properties* qProperties =new cl_command_queue_properties(CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
+	//CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
+	cl_command_queue_properties* qProperties =new cl_command_queue_properties();
 
 	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
-	//cl_command_queue cmdQueue = clCreateCommandQueue(context, device, 0, &status);
 
 	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
 	cl_mem clShapes = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Shape) * MAX_SHAPES, NULL, &status);

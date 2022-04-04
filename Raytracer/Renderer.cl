@@ -5,14 +5,11 @@
 #include "helpers.cl"
 #include "cookTorance.cl"
 
-//#define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-
-bool prd = false;
 
 
-float bias = 1e-4;
+#define BIAS 1e-4f
 
-HitResult rayHitListOfShapes(const Ray ray, const Sphere* spheres, uint numberOfSpheres){
+HitResult rayHitListOfShapes(const Ray ray, __global const Sphere* spheres, uint numberOfSpheres){
     int x = (int)1<INFINITY;
 
     HitResult minRayResult;
@@ -141,7 +138,7 @@ float3 randomHemisphericalVector(float3 normal, int idx, int randomCounter) {
 
 
 
-HitResult shootRay(Ray ray, const Sphere* spheres, uint numberOfSpheres) {
+HitResult shootRay(Ray ray, __global const Sphere* spheres, uint numberOfSpheres) {
 
 	return rayHitListOfShapes(ray, spheres, numberOfSpheres);
 
@@ -166,7 +163,6 @@ __kernel void render(
 
     int sampleN = 0;//get_global_id(2);
 
-    prd = (pixelX == 500) && (pixelY == 500);
 
     int pixelIdx = pixelX+(frameX*pixelY);
 
@@ -219,14 +215,15 @@ __kernel void render(
     float3 accumulated = (float3)(0.0f);
     float3 masked = (float3)(1.0f);
 
-    http://raytracey.blogspot.com/2016/11/opencl-path-tracing-tutorial-2-path.html
+    //http://raytracey.blogspot.com/2016/11/opencl-path-tracing-tutorial-2-path.html
+
     for(uint layer = 0; layer < otherData->maxDepth; layer++) {
         
         ray = newRay;
         newHit = shootRay(ray, spheres, otherData->numberOfSpheres);
 
         if(!newHit.hit){
-            if(layer==1u){
+            if(layer==0u){
                 accumulated = masked*otherData->clearColor.xyz;
             }
             break;
@@ -253,19 +250,19 @@ __kernel void render(
         
         if (transparencyDecider < mat.trans) {
             newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
-            newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * bias);
+            newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
         }
         else {
 
             if (reflectanceDecider < mat.smooth) {
                 newRay.direction = -rotateVector(ray.direction, M_PI_F, newHit.normal);//this is not the correct "rotate"
-                newRay.origin = newHit.position + (newHit.normal * bias);
+                newRay.origin = newHit.position + (newHit.normal * BIAS);
             }
             else {
                 
                 newRay.direction = normalize(randomHemisphericalVector(newHit.normal, pixelIdx, randomCounter));
                 randomCounter+=3;
-                newRay.origin = newHit.position + (newHit.normal * bias);
+                newRay.origin = newHit.position + (newHit.normal * BIAS);
             }
 
  
@@ -296,8 +293,8 @@ __kernel void render(
 
 
             accumulated += mat.emission.xyz*masked;
-            masked *= mat.color.xyz *(diff*kD);
-            //accumulated = (float3)(diff*kD);
+            masked *= mat.color.xyz *((diff*kD)+cT);
+            accumulated = (float3)(diff*kD);
             break;
             // if(pixelIdx == 500+(1000*550))printf("KD, KS, CT: %f, %f, %f\n", kD.x, kS.y, cT.z);
             //if(pixelX == 500 && pixelY == 600)printf("%i, %i, KD, KS, CT: %f, %f, %f\n", pixelX, pixelY, kD.x, kS.y, cT.z);
@@ -317,6 +314,7 @@ __kernel void render(
     //float4 result = {1.0, 0.0, 0.0, 1.0};
     frameBuffer[pixelIdx] = (float4)(accumulated, 1.0)/otherData->numberOfSamples;
     //if(pixelX == 500 && pixelY == 600) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
+    //frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
 }
 
 
