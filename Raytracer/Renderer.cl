@@ -219,7 +219,7 @@ __kernel void render(
     float3 accumulated = (float3)(0.0f);
     float3 masked = (float3)(1.0f);
 
-    
+    http://raytracey.blogspot.com/2016/11/opencl-path-tracing-tutorial-2-path.html
     for(uint layer = 0; layer < otherData->maxDepth; layer++) {
         
         ray = newRay;
