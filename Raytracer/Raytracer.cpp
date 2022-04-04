@@ -1,6 +1,10 @@
 #include "Raytracer.hpp"
 #include "CookTorrance.hpp"
 #include "clTypeDefs.hpp"
+
+typedef float4 fvec4;
+typedef float3 fvec3;
+
 #define CPP
 #include "sharedStructs.cl"
 
@@ -360,15 +364,16 @@ dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, 
 
 
 
-AABB redoAABBs(vector<Sphere> shapes) {
-	AABB toReturn = { fvec4(0.0), fvec4(0.0) };
-	for (Sphere s : shapes) {
-		printf("redoing a shape\n");
-		s.shape.boundingBox = { s.origin - fvec4(s.radius, s.radius, s.radius, 0.0f), s.origin + fvec4(s.radius, s.radius, s.radius, 0.0f) };
+AABB redoAABBs(vector<Sphere>& shapes) {
 
-		toReturn.min = min(toReturn.min, s.shape.boundingBox.min);
-		toReturn.max = max(toReturn.max, s.shape.boundingBox.max);
+	AABB toReturn = { fvec4(0.0), fvec4(0.0) };
+	for (Sphere& s : shapes) {
+		s.shape.boundingBox.min = s.origin - fvec4(s.radius, s.radius, s.radius, 0.0f);
+		s.shape.boundingBox.max = s.origin + fvec4(s.radius, s.radius, s.radius, 0.0f);
+		toReturn.min = glm::min(toReturn.min, s.shape.boundingBox.min);
+		toReturn.max = glm::max(toReturn.max, s.shape.boundingBox.max);
 	}
+
 	return toReturn;
 }
 
@@ -629,14 +634,14 @@ int main()
 
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
-	materials.push_back(Material(fvec4(1.0f, 0.0f, 0.0f, 0.0f), fvec4(1.0f, 0.0f, 0.0f, 0.0f), 10.0, 1.0, 0.0, 0.0, 0.0));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.5f, 0.5f));
+	materials.push_back(Material(fvec4(0.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 
 
 	vector<Sphere> shapes;
 	shapes.reserve(MAX_SHAPES);
-	shapes.push_back(Sphere(fvec4(1.0f, 2.0f, 3.0f, 4.0f), Shape(AABB(), 0u), 5.0f));
-
-
+	shapes.push_back(Sphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
+	shapes.push_back(Sphere(fvec4(0.0f, 10.0f, 0.0f, 0.0f), Shape(AABB(), 1u), 3.0f));
 
 
 
@@ -737,15 +742,12 @@ int main()
 		AABB sceneBounding = redoAABBs(shapes);
 
 
+
 		Sphere asdfdsa = shapes.at(0);
 
-		printf("min: %s\n", glm::to_string(asdfdsa.shape.boundingBox.min).c_str());
-		printf("max: %s\n", glm::to_string(asdfdsa.shape.boundingBox.max).c_str());
 
-		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), focal, 100u, uint(shapes.size())};
+		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), focal, currentFrame, 100u, uint(shapes.size()), MONTE_CARLO_SAMPLES };
 
-		printf("otherdata shapes.size: %u\n", otherData.numberOfSpheres);
-		printf("sizeof otherdata %zu\n", sizeof(OtherData));
 
 		//clearBuffers();
 
@@ -760,24 +762,36 @@ int main()
 		status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_FALSE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[2]);
 		printf("enqueue clMaterials %i\n", status);
 
+		//printf("sizeof sphere on host: %zu\n", sizeof(Sphere));
+		//printf("offset on host: %zu\n", offsetof(Sphere, radius));
 
-		cl_event* waitAfterProcessing = new cl_event[1];
+		
 
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 3, waitAfterWrites, waitAfterProcessing);
-		printf("enqueue rangekernal %i\n", status);
+		//printf("origin:");
+		//printf("%s\n", glm::to_string(x.origin).c_str());
+		//printf("%s\n", glm::to_string(x.shape.boundingBox.min).c_str());
+		//printf("%s\n", glm::to_string(x.shape.boundingBox.max).c_str());
+		//printf("matidx: %u\n", x.shape.matIdx);
+
+		
+
+		cl_event* waitAfterProcessing = new cl_event[MONTE_CARLO_SAMPLES];
+
+
+		for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
+			status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 3, waitAfterWrites, &waitAfterProcessing[i]);
+			//printf("enqueue rangekernal %i\n", status);
+		}
 
 
 
-
-
-		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, 1, waitAfterProcessing, NULL);
+		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, MONTE_CARLO_SAMPLES, waitAfterProcessing, NULL);
 		printf("enqueue read %i\n", status);
-		//for (size_t i = 0; i < frameX * frameY; i++) {
-			//printf("%s\n", glm::to_string(frameBuffer[i]).c_str());
-		//}
+		
 
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, frameBuffer);
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
@@ -785,23 +799,6 @@ int main()
 		glfwPollEvents();
 
 
-		cin.get();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		
 
 		/*
 		for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {

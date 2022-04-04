@@ -20,7 +20,7 @@ float rand(int xid){
     return fabs(randwithfloat2(c));
 }
 
-float randDubThree(int xid) {
-    return (rand(xid)*2.0f)-1.0f;
+// float randDubThree(int xid) {
+//     return (rand(xid)*2.0f)-1.0f;
 
-}
+// }

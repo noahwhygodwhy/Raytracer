@@ -14,7 +14,7 @@ enum Side {
 
 
 
-rayAABBResult rayAABB(AABB this, const Ray ray) {
+rayAABBResult rayAABB(AABB this, const Ray ray) { 
 
     rayAABBResult result;
 	float3 invD = 1.0f / ray.direction.xyz;
@@ -30,7 +30,6 @@ rayAABBResult rayAABB(AABB this, const Ray ray) {
 	tMax = min(tMax, min(tBigger.x, min(tBigger.y, tBigger.z)));
 
 	result.hit = tMin < tMax && tMax >= 0.0;
-
 	result.enter = ray.origin + (ray.direction * tMin);
 	result.exit = ray.origin + (ray.direction * tMax);
 

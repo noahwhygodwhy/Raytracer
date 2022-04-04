@@ -93,9 +93,6 @@
     <ClCompile Include="CookTorrance.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="clTypeDefs.hpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
