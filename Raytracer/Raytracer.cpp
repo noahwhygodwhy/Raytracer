@@ -12,8 +12,9 @@ using namespace std;
 using namespace std::filesystem;
 using namespace glm;
 
-#define MAX_SHAPES 50
+#define MAX_SPHERES 50
 #define MAX_MATERIALS 10
+#define MAX_TRIANGLES 50000
 
 #define MAX_PATH 500
 //#define OUTPUTPASSES 50
@@ -492,8 +493,11 @@ int main()
 	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
 
 	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
-	cl_mem clShapes = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Shape) * MAX_SHAPES, NULL, &status);
+	cl_mem clSpheres = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Sphere) * MAX_SPHERES, NULL, &status);
 	cl_mem clMaterials = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Material) * MAX_MATERIALS, NULL, &status);
+
+	cl_mem clTriangles = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Triangle) * MAX_TRIANGLES, NULL, &status);
+	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_TRIANGLES*3, NULL, &status);
 
 	cl_mem clFrameBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, frameX * frameY * sizeof(frameBuffer[0]), NULL, &status);
 
@@ -532,7 +536,7 @@ int main()
 
 	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
 	printf("set args 0 %i\n", status);
-	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clShapes);
+	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clSpheres);
 	printf("set args 1 %i\n", status);
 	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clMaterials);
 	printf("set args 2 %i\n", status);
@@ -540,6 +544,9 @@ int main()
 	printf("set args 3 %i\n", status);
 	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
 	printf("set args 4 %i\n", status);
+	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clTriangles);
+	printf("set args 4 %i\n", status);
+
 
 
 
@@ -619,30 +626,6 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 
-
-	
-
-
-
-	//TODO: two spheres makes it hard. NEED to do the octtree
-
-
-	//Material checkers("PlainWhiteTees");
-	//Material* checkers = new Material("PlainWhiteTees", dvec3(0.0, 0.0, 0.0), ryCheckers10x10);
-
-	//Material* white = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 1.0, 1.0));
-	//Material* red = new Material("Red");
-	//Material* green = (new Material("PlainWhiteTees"))->setColor(dvec3(0.0, 1.0, 0.0));
-	//Material* blue = (new Material("PlainWhiteTees"))->setColor(dvec3(0.0, 0.0, 1.0));
-	//Material* yellow = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 1.0, 0.0));
-	//Material* purple = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 0.0, 1.0));
-	//Material* teal = (new Material("PlainWhiteTees"))->setColor(dvec3(1.0, 0.0, 1.0));
-	//Material* glass = new Material("Glass");
-	//Material* mirrorA = new Material("Mirror");
-	//Material* mirrorB = new Material("MirrorB");
-
-
-
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
@@ -651,12 +634,17 @@ int main()
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 
 
-	vector<Sphere> shapes;
-	shapes.reserve(MAX_SHAPES);
-	shapes.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
-	shapes.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
-	shapes.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
-	shapes.push_back(Sphere(fvec4(-6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 3u), 1.0f));
+	vector<Sphere> spheres;
+	spheres.reserve(MAX_SPHERES);
+	spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
+	spheres.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
+	spheres.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
+	spheres.push_back(Sphere(fvec4(-6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 3u), 1.0f));
+
+	vector<Triangle> triangles;
+	triangles.reserve(MAX_TRIANGLES);
+	//TODO: add triangles here
+
 
 
 

@@ -27,6 +27,7 @@
         float currentTime;
         uint maxDepth;
         uint numberOfSpheres;
+        uint numberOfTriangles;
         uint numberOfSamples;
     }  OtherData;
 
@@ -79,6 +80,17 @@
         
     } Sphere;
 
+    typedef struct Vertex{
+        float4 position;
+        float4 normal;
+        float4 uv;
+    } Vertex;
+
+    typedef struct Triangle{
+        uint vertA;
+        uint vertB;
+        uint vertC;
+    }Triangle;
 
 
 
@@ -93,6 +105,7 @@
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 #else
+    
     
 
     typedef struct rayAABBResult {
@@ -116,6 +129,7 @@
         float currentTime;
         uint maxDepth;
         uint numberOfSpheres;
+        uint numberOfTriangles;
         uint numberOfSamples;
     } OtherData;
 
@@ -167,6 +181,18 @@
 
         
     } Sphere;
+
+    typedef struct Vertex{
+        float4 position;
+        float4 normal;
+        float4 uv;
+    } Vertex;
+
+    typedef struct Triangle{
+        uint vertA;
+        uint vertB;
+        uint vertC;
+    }Triangle;
 #endif
 
 
