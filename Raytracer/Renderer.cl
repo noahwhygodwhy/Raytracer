@@ -171,7 +171,6 @@ __kernel void render(
 
     ulong state = randomBuffer[pixelIdx];
 
-    // printf("state: %lu\n", state);
 
     float normalizedX = (((float)(pixelX)/(float)(frameX))-0.5f);//*2.0f;
     float normalizedY = (((float)(pixelY)/(float)(frameY))-0.5f);//*2.0f;
@@ -301,37 +300,38 @@ __kernel void render(
                     float3 axis = fabs(w.x) > 0.1f ? (float3)(0.0f, 1.0f, 0.0f) : (float3)(1.0f, 0.0f, 0.0f);
                     float3 u = normalize(cross(axis, w));
                     float3 v = cross(w, u);
+                    
                     float3 newdir = normalize(u * cos(rand1)*rand2s + v*sin(rand1)*rand2s + w*sqrt(1.0f - rand2));
                     
-                    newRay.direction = newdir;//normalize(randomHemisphericalVector(newHit.normal, &state));
+                    newRay.direction = normalize(randomHemisphericalVector(newHit.normal, &state));
                 }
 
     
     //calculate lighting stuff
 
-                // float3 F0a = (float3)(fabs((1.0f - mat.ni) / (1.0f + mat.ni)));
-                // F0a = F0a * F0a;
-                // float3 matC = mat.color.xyz;
+                float3 F0a = (float3)(fabs((1.0f - mat.ni) / (1.0f + mat.ni)));
+                F0a = F0a * F0a;
+                float3 matC = mat.color.xyz;
 
-                // float3 F0 = mix(F0a, matC, mat.metal);
+                float3 F0 = mix(F0a, matC, mat.metal);
                 // //dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, minRayResult.shape->mat, currentIOR, F0, kS);
                 // //TODO: need to keep the current ray
-                // float3 kS;
-                // float3 cT = CookTorance(ray, newRay, newHit, mat, ior, F0, &kS);
-
+                float3 kS;
+                float3 cT = max(CookTorance(ray, newRay, newHit, mat, ior, F0, &kS), 0.0);
+//if(pixelX == 825 && pixelY == 300)
         //blinn phong (ish)
                 //float3 R = rotateVector(newRay.direction, M_PI_F, newHit.normal);//TODO: not the right rotate
                 float3 V = -ray.direction;
                 float3 N = newHit.normal;
                 float3 L = newRay.direction;
 
-                float3 H = (L + V) / length(L + V);
+                float3 H = normalize((L + V));
 
                 float diff = max(dot(L, N), 0.0f);
                 float spec = max(dot(N, H), 0.0f);
 
-                //float3 kD = ((1.0f - kS) * (1.0f - mat.metal))*diff;*/
-
+                float3 kD = ((1.0f - kS) * (1.0f - mat.metal));//*diff;
+                
                 //if(pixelX == 825 && pixelY == 300)printf("V: %f, %f, %f\n", V.x, V.y, V.z);
                 //if(pixelX == 825 && pixelY == 300)printf("L: %f, %f, %f\n", L.x, L.y, L.z);
                 //if(pixelX == 825 && pixelY == 300)printf("N: %f, %f, %f\n", N.x, N.y, N.z);
@@ -339,7 +339,7 @@ __kernel void render(
 
                 accumulated += mat.emission.xyz*masked;
                 masked *= mat.color.xyz;
-                masked*= diff+spec;
+                masked*= (diff*kD)+(cT);
                 
                 //accumulated = (float3)(fabs(newHit.normal.x), fabs(newHit.normal.y), fabs(newHit.normal.z));
                 //break;

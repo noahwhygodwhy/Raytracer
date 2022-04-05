@@ -17,15 +17,15 @@ using namespace glm;
 
 #define MAX_PATH 500
 //#define OUTPUTPASSES 50
-//#define OUTPUTFRAMES 189
-#define EVERYFRAME INFINITY
+#define OUTPUTFRAMES 189
+//#define EVERYFRAME INFINITY
 #define CONCURRENT_FOR
 #define KDTRACE
-#define CIN
+//#define CIN
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 10000
+#define MONTE_CARLO_SAMPLES 1000
 
 
 //#define BASIC_BITCH
@@ -645,20 +645,22 @@ int main()
 
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
-	materials.push_back(Material(fvec4(1.0f, 0.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 
 
 	vector<Sphere> shapes;
 	shapes.reserve(MAX_SHAPES);
 	shapes.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
-	shapes.push_back(Sphere(fvec4(0.0f, -3.1f, 0.0f, 0.0f), Shape(AABB(), 2u), 3.0f));
-	shapes.push_back(Sphere(fvec4(6.0f, 6.0f, 0.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
+	shapes.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
+	shapes.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
+	shapes.push_back(Sphere(fvec4(-6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 3u), 1.0f));
 
 
 
-	int frameCounter = -1;
+	uint32_t frameCounter = 0;
 	float frameTimes[30](0);
 	int lastSecondFrameCount = -1;
 
@@ -675,13 +677,15 @@ int main()
 
 	printf("about to create directory: %s\n", saveFileDirectory.c_str());
 	filesystem::create_directory(("out/"+saveFileDirectory).c_str());
-	double currentFrame = double(frameCounter) / double(fps);
-	printf("frame counter: %u\n", frameCounter);
-
+	cl_event* readEvent;
 
 
 #ifdef OUTPUTFRAMES
-	for (uint32_t frameCounter = 0; frameCounter < OUTPUTFRAMES;) {
+	for (; frameCounter < OUTPUTFRAMES;) {
+	double currentFrame = double(frameCounter) / double(fps);
+
+
+
 #endif
 #ifdef OUTPUTPASSES
 		{
@@ -698,9 +702,7 @@ int main()
 #endif
 
 #endif
-
 		frameCounter++;
-
 
 
 
@@ -715,7 +717,7 @@ int main()
 			for (float f : frameTimes) {
 				sum += f;
 			}
-			//printf("fps: %f\n", sum / 30.0f);
+			printf("fps: %f\n", sum / 30.0f);
 		}
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
@@ -729,10 +731,12 @@ int main()
 		constexpr double mypi = glm::pi<double>();
 		clearBuffers();
 
-		//dvec3 eye = vec3(sin(currentFrame) * 8, 2, cos(currentFrame) * 8);
-		fvec3 eye = fvec3(0.0f, 5.0f, 10.0f);
 
-		fvec3 lookat = fvec3(0.0, 0.0, 0.0);
+		fvec3 eye = fvec3(sin(currentFrame*3.0f) * 15, 7, cos(currentFrame*3.0f) * 15);
+
+		//fvec3 eye = fvec3(0.0f, 7.0f, 15.0f);
+
+		fvec3 lookat = fvec3(0.0, 3.0, 0.0);
 		//lookat = vec3(0.0, -5.0, 15);
 
 		//printf("looking at %s\n", glm::to_string(lookat).c_str());
@@ -762,23 +766,21 @@ int main()
 
 		auto randSeed = numGen();
 		
-		printf("rand seed: %zu\n", randSeed);
 
 		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), randSeed, focal, currentFrame, 100u, uint(shapes.size()), MONTE_CARLO_SAMPLES };
 
-		printf("randseed: %zu\n", otherData.randomSeed);//
 
 
 		cl_event* waitAfterWrites = new cl_event[4];
 
 		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[0]);
-		printf("enqueue clOtherData %i\n", status);
+		//printf("enqueue clOtherData %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[1]);
-		printf("enqueue clShapes %i\n", status);
+		//printf("enqueue clShapes %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_FALSE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[2]);
-		printf("enqueue clMaterials %i\n", status);
+		//printf("enqueue clMaterials %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX*frameY, randomBuffer, 0, NULL, &waitAfterWrites[3]);
-		printf("enqueue clMaterials %i\n", status);
+		//printf("enqueue clMaterials %i\n", status);
 
 		//printf("sizeof sphere on host: %zu\n", sizeof(Sphere));
 		//printf("offset on host: %zu\n", offsetof(Sphere, radius));
@@ -804,7 +806,7 @@ int main()
 
 
 		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, 1, waitAfterProcessing, NULL);
-		printf("enqueue read %i\n", status);
+		//printf("enqueue read %i\n", status);
 		
 
 
