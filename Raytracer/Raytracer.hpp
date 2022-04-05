@@ -71,6 +71,7 @@ void processInput(GLFWwindow* window)
 }
 
 
+uint64_t* randomBuffer;
 fvec4* frameBuffer;
 fvec4* drawBuffer;
 

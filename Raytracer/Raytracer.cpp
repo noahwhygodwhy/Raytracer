@@ -25,7 +25,7 @@ using namespace glm;
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 1
+#define MONTE_CARLO_SAMPLES 10000
 
 
 //#define BASIC_BITCH
@@ -497,7 +497,7 @@ int main()
 
 	cl_mem clFrameBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, frameX * frameY * sizeof(frameBuffer[0]), NULL, &status);
 
-
+	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
 
 	long unsigned int length;
 	ifstream stream("Renderer.cl", ios::in | ios::ate | ios::binary);
@@ -538,6 +538,8 @@ int main()
 	printf("set args 2 %i\n", status);
 	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clFrameBuffer);
 	printf("set args 3 %i\n", status);
+	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	printf("set args 4 %i\n", status);
 
 
 
@@ -597,6 +599,16 @@ int main()
 	frameBuffer = new fvec4[frameX * frameY]();
 	drawBuffer = new fvec4[frameX * frameY]();
 
+
+	mt19937_64 numGen;
+	randomBuffer = new uint64_t[frameX * frameY]();
+	for (size_t i = 0; i < frameX * frameY; i++) {
+		randomBuffer[i] = numGen();
+		//printf("random buffer %i: %zu\n", i, randomBuffer[i]);
+	}
+	//exit(0);
+	
+
 	//initialize textured that the framebuffer gets written to display it on a triangle
 	unsigned int frameTexture;
 	glGenTextures(1, &frameTexture);
@@ -633,19 +645,18 @@ int main()
 
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 1.0f, 1.0f));
+	materials.push_back(Material(fvec4(1.0f, 0.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 1.0f, 1.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 
 
 	vector<Sphere> shapes;
 	shapes.reserve(MAX_SHAPES);
-	shapes.push_back(Sphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
-	shapes.push_back(Sphere(fvec4(0.0f, -10003.5f, 0.0f, 0.0f), Shape(AABB(), 2u), 10000.0f));
-	shapes.push_back(Sphere(fvec4(0.0f, 60.0f, 0.0f, 0.0f), Shape(AABB(), 1u), 50.0f));
+	shapes.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
+	shapes.push_back(Sphere(fvec4(0.0f, -3.1f, 0.0f, 0.0f), Shape(AABB(), 2u), 3.0f));
+	shapes.push_back(Sphere(fvec4(6.0f, 6.0f, 0.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
 
 
-	mt19937_64 numGen;
 
 	int frameCounter = -1;
 	float frameTimes[30](0);
@@ -758,13 +769,15 @@ int main()
 		printf("randseed: %zu\n", otherData.randomSeed);//
 
 
-		cl_event* waitAfterWrites = new cl_event[3];
+		cl_event* waitAfterWrites = new cl_event[4];
 
 		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[0]);
 		printf("enqueue clOtherData %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[1]);
 		printf("enqueue clShapes %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_FALSE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[2]);
+		printf("enqueue clMaterials %i\n", status);
+		status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX*frameY, randomBuffer, 0, NULL, &waitAfterWrites[3]);
 		printf("enqueue clMaterials %i\n", status);
 
 		//printf("sizeof sphere on host: %zu\n", sizeof(Sphere));
@@ -783,7 +796,7 @@ int main()
 		cl_event* waitAfterProcessing = new cl_event;
 
 
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 3, waitAfterWrites, &waitAfterProcessing[i]);
+		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 4, waitAfterWrites, &waitAfterProcessing[i]);
 		//for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
 		//	//printf("enqueue rangekernal %i\n", status);
 		//}

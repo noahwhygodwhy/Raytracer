@@ -151,7 +151,8 @@ __kernel void render(
     __global const OtherData* otherData,
     __global const Sphere* spheres,
     __global const Material* materials,
-    __global float4* frameBuffer) //an array of maxJumps hitResults
+    __global float4* frameBuffer,
+    __global ulong* randomBuffer) //an array of maxJumps hitResults
     {
 
     float randomCounter = otherData->currentTime;
@@ -168,6 +169,9 @@ __kernel void render(
 
     int pixelIdx = pixelX+(frameX*pixelY);
 
+    ulong state = randomBuffer[pixelIdx];
+
+    // printf("state: %lu\n", state);
 
     float normalizedX = (((float)(pixelX)/(float)(frameX))-0.5f);//*2.0f;
     float normalizedY = (((float)(pixelY)/(float)(frameY))-0.5f);//*2.0f;
@@ -201,7 +205,6 @@ __kernel void render(
 
     
 //     return;  
-    ulong state = (otherData->randomSeed ^ ((ulong)pixelIdx));
     
     //printf("state: %u\n", otherData->randomSeed);
     // return;
@@ -230,9 +233,6 @@ __kernel void render(
 
     //return;
     for(uint monte = 0; monte < otherData->numberOfSamples; monte++){
-
-        state = state^(((ulong)monte)<<8);
-
         ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - otherData->eye.xyz);
         ray.origin = otherData->eye.xyz;
         newRay = ray;
@@ -332,10 +332,10 @@ __kernel void render(
 
                 //float3 kD = ((1.0f - kS) * (1.0f - mat.metal))*diff;*/
 
-                if(pixelX == 825 && pixelY == 300)printf("V: %f, %f, %f\n", V.x, V.y, V.z);
-                if(pixelX == 825 && pixelY == 300)printf("L: %f, %f, %f\n", L.x, L.y, L.z);
-                if(pixelX == 825 && pixelY == 300)printf("N: %f, %f, %f\n", N.x, N.y, N.z);
-                if(pixelX == 825 && pixelY == 300)printf("diff: %f, spec: %f\n", diff, spec);
+                //if(pixelX == 825 && pixelY == 300)printf("V: %f, %f, %f\n", V.x, V.y, V.z);
+                //if(pixelX == 825 && pixelY == 300)printf("L: %f, %f, %f\n", L.x, L.y, L.z);
+                //if(pixelX == 825 && pixelY == 300)printf("N: %f, %f, %f\n", N.x, N.y, N.z);
+                //if(pixelX == 825 && pixelY == 300)printf("diff: %f, spec: %f\n", diff, spec);
 
                 accumulated += mat.emission.xyz*masked;
                 masked *= mat.color.xyz;
@@ -355,7 +355,7 @@ __kernel void render(
             
             
         }
-        if(pixelX == 825 && pixelY == 300)printf("accumlated is %f, %f, %f\n", accumulated.x, accumulated.y, accumulated.z);
+        //if(pixelX == 825 && pixelY == 300)printf("accumlated is %f, %f, %f\n", accumulated.x, accumulated.y, accumulated.z);
         monteAccum += accumulated;
     }
     //uint layer;
@@ -363,8 +363,8 @@ __kernel void render(
     //totalRadiance = (float3)(0.5, 0.0, 0.0);
     //float4 result = {1.0, 0.0, 0.0, 1.0};
     frameBuffer[pixelIdx] = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
-    
-    if(pixelX == 825 || pixelY == 300) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
+    randomBuffer[pixelIdx] = state;
+    //if(pixelX == 825 || pixelY == 300) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
     //frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
 }
 
