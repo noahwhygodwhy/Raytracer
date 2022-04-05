@@ -633,17 +633,19 @@ int main()
 
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.5f, 0.5f));
-	materials.push_back(Material(fvec4(0.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 1.0f, 1.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 1.0f, 1.0f));
 
 
 	vector<Sphere> shapes;
 	shapes.reserve(MAX_SHAPES);
 	shapes.push_back(Sphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
-	shapes.push_back(Sphere(fvec4(0.0f, 10.0f, 0.0f, 0.0f), Shape(AABB(), 1u), 3.0f));
+	shapes.push_back(Sphere(fvec4(0.0f, -10003.5f, 0.0f, 0.0f), Shape(AABB(), 2u), 10000.0f));
+	shapes.push_back(Sphere(fvec4(0.0f, 60.0f, 0.0f, 0.0f), Shape(AABB(), 1u), 50.0f));
 
 
-
+	mt19937_64 numGen;
 
 	int frameCounter = -1;
 	float frameTimes[30](0);
@@ -717,7 +719,7 @@ int main()
 		clearBuffers();
 
 		//dvec3 eye = vec3(sin(currentFrame) * 8, 2, cos(currentFrame) * 8);
-		fvec3 eye = fvec3(0.0f, 0.0f, 10.0f);
+		fvec3 eye = fvec3(0.0f, 5.0f, 10.0f);
 
 		fvec3 lookat = fvec3(0.0, 0.0, 0.0);
 		//lookat = vec3(0.0, -5.0, 15);
@@ -744,12 +746,16 @@ int main()
 
 		Sphere asdfdsa = shapes.at(0);
 
+		RAND_MAX;
 
-		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), focal, currentFrame, 100u, uint(shapes.size()), MONTE_CARLO_SAMPLES };
 
+		auto randSeed = numGen();
+		
+		printf("rand seed: %zu\n", randSeed);
 
-		//clearBuffers();
+		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), randSeed, focal, currentFrame, 100u, uint(shapes.size()), MONTE_CARLO_SAMPLES };
 
+		printf("randseed: %zu\n", otherData.randomSeed);//
 
 
 		cl_event* waitAfterWrites = new cl_event[3];
@@ -774,17 +780,17 @@ int main()
 
 		
 
-		cl_event* waitAfterProcessing = new cl_event[MONTE_CARLO_SAMPLES];
+		cl_event* waitAfterProcessing = new cl_event;
 
 
-		for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
-			status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 3, waitAfterWrites, &waitAfterProcessing[i]);
-			//printf("enqueue rangekernal %i\n", status);
-		}
+		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 3, waitAfterWrites, &waitAfterProcessing[i]);
+		//for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
+		//	//printf("enqueue rangekernal %i\n", status);
+		//}
 
 
 
-		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, MONTE_CARLO_SAMPLES, waitAfterProcessing, NULL);
+		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, 1, waitAfterProcessing, NULL);
 		printf("enqueue read %i\n", status);
 		
 

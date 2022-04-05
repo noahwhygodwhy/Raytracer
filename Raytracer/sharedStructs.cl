@@ -22,6 +22,7 @@
         float4 camRight;
         float4 camUp;
         float4 camForward;
+        cl_long randomSeed;
         float focal;
         float currentTime;
         uint maxDepth;
@@ -110,6 +111,7 @@
         float4 camRight;
         float4 camUp;
         float4 camForward;
+        ulong randomSeed;
         float focal;
         float currentTime;
         uint maxDepth;

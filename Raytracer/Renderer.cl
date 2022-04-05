@@ -102,35 +102,37 @@ float3 getRefractionRay(float3 hitNormal, float3 incidentVector, float objectIOR
 
 
 //TODO: this might not be an ok way of sampling hemisphere vectors
-float3 randomHemisphericalVector(float3 normal, int idx, int randomCounter) {
+float3 randomHemisphericalVector(float3 normal, ulong* state) {
+
+
 
     //return (float3)(0.0, 1.0, 0.0);
     //return (float3)(0.0f, 1.0f, 0.0f);
-    float3 randomVector = normalize((float3)(rand(idx+randomCounter+0), rand(idx+randomCounter+1), rand(idx+randomCounter+2)));
-    //if(idx == 500+(1000*550))printf("new random hemisphere vector: %f, %f, %f\n", randomVector.x, randomVector.y, randomVector.z);
-   // if(idx == 500+(1000*550))printf("normal vector: %f, %f, %f\n", normal.x, normal.y, normal.z);
-    float dotVN = dot(randomVector, normal);
-    if(fabs(dotVN)==1.0){
-        return (float3)(0.0, 1.0, 0.0);
+//     float3 randomVector = normalize((float3)(rand(idx+randomCounter++), rand(idx+randomCounter++), rand(idx+randomCounter++)));
+//     //if(idx == 500+(1000*550))printf("new random hemisphere vector: %f, %f, %f\n", randomVector.x, randomVector.y, randomVector.z);
+//    // if(idx == 500+(1000*550))printf("normal vector: %f, %f, %f\n", normal.x, normal.y, normal.z);
+//     float dotVN = dot(randomVector, normal);
+//     if(fabs(dotVN)==1.0){
+//         return (float3)(0.0, 1.0, 0.0);
 
-    } else {
-        float3 rotVec = cross(randomVector, normal);
-        return normalize(rotateVector(randomVector, acos(dotVN), rotVec));
+//     } else {
+//         float3 rotVec = cross(randomVector, normal);
+//         return normalize(rotateVector(randomVector, acos(dotVN), rotVec));
         
-    }
+//     }
 
 
     //return (float3)(0.0f, 1.0f, 0.0f);
 
     //printf("called random hemispherical vector\n");
-	// float3 outVec = (float3)(0.0f, 0.0f, 0.0f);
+	float3 outVec = (float3)(0.0f, 0.0f, 0.0f);
 
-	// normal = normalize(normal);
-	// do {
-	// 	outVec = normalize((float3)(randDubThree(idx+randomCounter+0), randDubThree(idx+randomCounter+1), randDubThree(idx+randomCounter+2)));
-	// } while (dot(normal, outVec) < 0.0);
-    // //printf("random hemisphere vector from normal %f, %f, %f: %f, %f, %f\n", normal.x, normal.y, normal.z, outVec.x, outVec.y, outVec.z);
-	// return outVec;
+	normal = normalize(normal);
+	do {
+		outVec = normalize((float3)(randDubThree(state), randDubThree(state), randDubThree(state)));
+	} while (dot(normal, outVec) < 0.0);
+    //printf("random hemisphere vector from normal %f, %f, %f: %f, %f, %f\n", normal.x, normal.y, normal.z, outVec.x, outVec.y, outVec.z);
+	return outVec;
 }
 
 
@@ -191,13 +193,22 @@ __kernel void render(
     ray.origin = otherData->eye.xyz;
     newRay = ray;
 
+//   printf("pixelidx: %i, randomseed: %lu, ^^^ %lu\n", pixelIdx, otherData->randomSeed, ((ulong)pixelIdx) ^ otherData->randomSeed); 
+//     return;
+
+
+//     printf("state: %u\n", otherData->randomSeed);
 
     
+//     return;  
+    ulong state = (otherData->randomSeed ^ ((ulong)pixelIdx));
+    
+    //printf("state: %u\n", otherData->randomSeed);
+    // return;
+    // float3 totalRadiance = (float3)(0.0f, 0.0f, 0.0f);
 
-    float3 totalRadiance = (float3)(0.0f, 0.0f, 0.0f);
-
-    float3 layerMultiplier = (float3)(1.0f, 1.0f, 1.0f);
-    float3 prevLayerRadiance = (float3)(0.0f, 0.0f, 0.0f);
+    // float3 layerMultiplier = (float3)(1.0f, 1.0f, 1.0f);
+    // float3 prevLayerRadiance = (float3)(0.0f, 0.0f, 0.0f);
     //float3 kS = (float3)(1.0f, 1.0f, 1.0f);
     //float3 cT = (float3)(1.0f, 1.0f, 1.0f);
    // float3 kD = (float3)(1.0f, 1.0f, 1.0f);
@@ -212,108 +223,148 @@ __kernel void render(
     HitResult newHit;
     
 
-    float3 accumulated = (float3)(0.0f);
-    float3 masked = (float3)(1.0f);
-
     //http://raytracey.blogspot.com/2016/11/opencl-path-tracing-tutorial-2-path.html
 
-    for(uint layer = 0; layer < otherData->maxDepth; layer++) {
-        
-        ray = newRay;
-        newHit = shootRay(ray, spheres, otherData->numberOfSpheres);
+    float3 monteAccum = (float3)(0.0f);
+    //printf("number of samples: %u\n", otherData->numberOfSamples);
 
-        if(!newHit.hit){
-            if(layer==0u){
-                accumulated = masked*otherData->clearColor.xyz;
+    //return;
+    for(uint monte = 0; monte < otherData->numberOfSamples; monte++){
+
+        state = state^(((ulong)monte)<<8);
+
+        ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - otherData->eye.xyz);
+        ray.origin = otherData->eye.xyz;
+        newRay = ray;
+
+        float3 accumulated = (float3)(0.0f);
+        float3 masked = (float3)(1.0f);
+        randomCounter+=1.5123f;
+        for(uint layer = 0; layer < otherData->maxDepth; layer++) {
+
+            ray = newRay;
+            newHit = shootRay(ray, spheres, otherData->numberOfSpheres);
+
+            if(!newHit.hit){
+                if(layer==0u){
+                    accumulated = masked*otherData->clearColor.xyz;
+                }
+                break;
+
             }
-            break;
 
-        }
+            float transparencyDecider = rand(&state);
+            float reflectanceDecider = rand(&state);
+            //float specularDecider = rand(pixelIdx+randomCounter++);
 
-        float transparencyDecider = rand(pixelIdx+randomCounter+1);
-        float reflectanceDecider = rand(pixelIdx+randomCounter+1);
-        //float specularDecider = rand(pixelIdx+randomCounter++);
+            float hitAngle = acos(dot(newHit.normal, -ray.direction));
 
-        float hitAngle = acos(dot(newHit.normal, -ray.direction));
+            bool entering = hitAngle < (M_PI_F / 2.0);
 
-        bool entering = hitAngle < (M_PI_F / 2.0);
-
-        Material mat = materials[spheres[newHit.shapeIdx].shape.matIdx];
+            Material mat = materials[spheres[newHit.shapeIdx].shape.matIdx];
 
 
-        //printf("spheres[newHit.shapeIdx].shape.matIdx %u, layer: %u, deciders: %f<%f, %f<%f, emmision: %f, %f, %f\n", spheres[newHit.shapeIdx].shape.matIdx, layer, transparencyDecider, mat.trans,  reflectanceDecider, mat.smooth, mat.emission.r, mat.emission.g, mat.emission.b);//, specularDecider);
-        ;
-        /*if(!(mat.emission.r == 0.0 && mat.emission.g == 0.0 && mat.emission.b == 0.0)){
+            //printf("spheres[newHit.shapeIdx].shape.matIdx %u, layer: %u, deciders: %f<%f, %f<%f, emmision: %f, %f, %f\n", spheres[newHit.shapeIdx].shape.matIdx, layer, transparencyDecider, mat.trans,  reflectanceDecider, mat.smooth, mat.emission.r, mat.emission.g, mat.emission.b);//, specularDecider);
+            
+            /*if(!(mat.emission.r == 0.0 && mat.emission.g == 0.0 && mat.emission.b == 0.0)){
 
-            break;
-        }*/
-        
-        if (transparencyDecider < mat.trans) {
-            newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
-            newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
-        }
-        else {
-
-            if (reflectanceDecider < mat.smooth) {
-                newRay.direction = -rotateVector(ray.direction, M_PI_F, newHit.normal);//this is not the correct "rotate"
-                newRay.origin = newHit.position + (newHit.normal * BIAS);
+                break;
+            }*/
+            
+            if (transparencyDecider < mat.trans) {
+                newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
+                newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
             }
             else {
-                
-                newRay.direction = normalize(randomHemisphericalVector(newHit.normal, pixelIdx, randomCounter));
-                randomCounter+=3;
                 newRay.origin = newHit.position + (newHit.normal * BIAS);
+
+                if (reflectanceDecider < mat.smooth && false) {
+                    newRay.direction = -rotateVector(ray.direction, M_PI_F, newHit.normal);//this is not the correct "rotate"
+                }
+                else {
+                    
+                    
+                    //TODO: this was essentially stolen from 
+                    //http://raytracey.blogspot.com/2016/11/opencl-path-tracing-tutorial-2-path.html
+                    //need to go through and see how the one I wrote was wrong after I confirm this works.
+                    float3 normal = newHit.normal;
+                    float3 normal_facing = dot(normal, ray.direction) < 0.0f ? normal : normal * (-1.0f);
+
+                    /* compute two random numbers to pick a random point on the hemisphere above the hitpoint*/
+                    
+                    float rand1 = 2.0f * M_PI_F * rand(&state);
+                    float rand2 = rand(&state);
+                    float rand2s = sqrt(rand2);
+
+                    /* create a local orthogonal coordinate frame centered at the hitpoint */
+                    float3 w = normal_facing;
+                    float3 axis = fabs(w.x) > 0.1f ? (float3)(0.0f, 1.0f, 0.0f) : (float3)(1.0f, 0.0f, 0.0f);
+                    float3 u = normalize(cross(axis, w));
+                    float3 v = cross(w, u);
+                    float3 newdir = normalize(u * cos(rand1)*rand2s + v*sin(rand1)*rand2s + w*sqrt(1.0f - rand2));
+                    
+                    newRay.direction = newdir;//normalize(randomHemisphericalVector(newHit.normal, &state));
+                }
+
+    
+    //calculate lighting stuff
+
+                // float3 F0a = (float3)(fabs((1.0f - mat.ni) / (1.0f + mat.ni)));
+                // F0a = F0a * F0a;
+                // float3 matC = mat.color.xyz;
+
+                // float3 F0 = mix(F0a, matC, mat.metal);
+                // //dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, minRayResult.shape->mat, currentIOR, F0, kS);
+                // //TODO: need to keep the current ray
+                // float3 kS;
+                // float3 cT = CookTorance(ray, newRay, newHit, mat, ior, F0, &kS);
+
+        //blinn phong (ish)
+                //float3 R = rotateVector(newRay.direction, M_PI_F, newHit.normal);//TODO: not the right rotate
+                float3 V = -ray.direction;
+                float3 N = newHit.normal;
+                float3 L = newRay.direction;
+
+                float3 H = (L + V) / length(L + V);
+
+                float diff = max(dot(L, N), 0.0f);
+                float spec = max(dot(N, H), 0.0f);
+
+                //float3 kD = ((1.0f - kS) * (1.0f - mat.metal))*diff;*/
+
+                if(pixelX == 825 && pixelY == 300)printf("V: %f, %f, %f\n", V.x, V.y, V.z);
+                if(pixelX == 825 && pixelY == 300)printf("L: %f, %f, %f\n", L.x, L.y, L.z);
+                if(pixelX == 825 && pixelY == 300)printf("N: %f, %f, %f\n", N.x, N.y, N.z);
+                if(pixelX == 825 && pixelY == 300)printf("diff: %f, spec: %f\n", diff, spec);
+
+                accumulated += mat.emission.xyz*masked;
+                masked *= mat.color.xyz;
+                masked*= diff+spec;
+                
+                //accumulated = (float3)(fabs(newHit.normal.x), fabs(newHit.normal.y), fabs(newHit.normal.z));
+                //break;
+                // if(pixelIdx == 500+(1000*550))printf("KD, KS, CT: %f, %f, %f\n", kD.x, kS.y, cT.z);
+                //if(pixelX == 500 && pixelY == 600)printf("%i, %i, KD, KS, CT: %f, %f, %f\n", pixelX, pixelY, kD.x, kS.y, cT.z);
+                
+                //totalRadiance = totalRadiance + (layerMultiplier * mat.color.xyz);
+                //prevLayerRadiance = mat.color.xyz;
+                //layerMultiplier *= (kD);
+
+                
             }
-
- 
-//calculate lighting stuff
-
-            float3 F0a = (float3)(fabs((1.0f - mat.ni) / (1.0f + mat.ni)));
-            F0a = F0a * F0a;
-            float3 matC = mat.color.xyz;
-
-            float3 F0 = mix(F0a, matC, mat.metal);
-            //dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, minRayResult.shape->mat, currentIOR, F0, kS);
-            //TODO: need to keep the current ray
-            float3 kS;
-            float3 cT = CookTorance(ray, newRay, newHit, mat, ior, F0, &kS);
-
-    //blinn phong (ish)
-            float3 R = rotateVector(newRay.direction, M_PI_F, newHit.normal);//TODO: not the right rotate
-            float3 V = ray.origin;
-            float3 N = newHit.normal;
-            float3 L = newRay.direction;
-
-            float3 H = (L + V) / length(L + V);
-
-            float diff = dot(L, N);
-            float spec = dot(N, H);
-
-            float3 kD = ((1.0f - kS) * (1.0f - mat.metal))*diff;
-
-
-            accumulated += mat.emission.xyz*masked;
-            masked *= mat.color.xyz *((diff*kD)+cT);
-            accumulated = (float3)(diff*kD);
-            break;
-            // if(pixelIdx == 500+(1000*550))printf("KD, KS, CT: %f, %f, %f\n", kD.x, kS.y, cT.z);
-            //if(pixelX == 500 && pixelY == 600)printf("%i, %i, KD, KS, CT: %f, %f, %f\n", pixelX, pixelY, kD.x, kS.y, cT.z);
             
-            //totalRadiance = totalRadiance + (layerMultiplier * mat.color.xyz);
-            //prevLayerRadiance = mat.color.xyz;
-            //layerMultiplier *= (kD);
-
             
         }
-        
+        if(pixelX == 825 && pixelY == 300)printf("accumlated is %f, %f, %f\n", accumulated.x, accumulated.y, accumulated.z);
+        monteAccum += accumulated;
     }
-
     //uint layer;
 
     //totalRadiance = (float3)(0.5, 0.0, 0.0);
     //float4 result = {1.0, 0.0, 0.0, 1.0};
-    frameBuffer[pixelIdx] = (float4)(accumulated, 1.0)/otherData->numberOfSamples;
-    //if(pixelX == 500 && pixelY == 600) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
+    frameBuffer[pixelIdx] = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
+    
+    if(pixelX == 825 || pixelY == 300) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
     //frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
 }
 
