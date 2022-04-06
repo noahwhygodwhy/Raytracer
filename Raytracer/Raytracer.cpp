@@ -19,14 +19,14 @@ using namespace glm;
 #define MAX_PATH 500
 //#define OUTPUTPASSES 50
 //#define OUTPUTFRAMES 189
-#define EVERYFRAME INFINITY
-#define CONCURRENT_FOR
-#define KDTRACE
-#define CIN
+//#define EVERYFRAME INFINITY
+//#define CONCURRENT_FOR
+//#define KDTRACE
+//#define CIN
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 1
+#define MONTE_CARLO_SAMPLES 1024
 
 
 //#define BASIC_BITCH
@@ -498,8 +498,14 @@ int main()
 	
 
 	cl_device_id device = devices[0];
+
+	cl_gl_context_info;
+
+	cl_int glContext = clGetGLContextInfoKHR(NULL, CL_DEVICES_FOR_GL_CONTEXT_KHR)
+
 	cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
 	//CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
+
 	cl_command_queue_properties* qProperties =new cl_command_queue_properties();
 
 	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
@@ -511,7 +517,14 @@ int main()
 	cl_mem clTriangles = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Triangle) * MAX_TRIANGLES, NULL, &status);
 	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_TRIANGLES*3, NULL, &status);
 
-	cl_mem clFrameBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, frameX * frameY * sizeof(frameBuffer[0]), NULL, &status);
+	cl_image_format imgFormat =  {CL_sRGBA, CL_FLOAT} ;
+	cl_mem clImage = clCreateImage2D(context, CL_MEM_READ_ONLY, &imgFormat, frameX, frameY, NULL, NULL, &status);
+
+
+	GLuint FBO;
+	glGenFramebuffers(1, &FBO);
+
+	cl_mem clFrameBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, frameX * frameY * sizeof(frameBuffer[0]), FBO, &status);
 
 	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
 
@@ -524,7 +537,7 @@ int main()
 	shaderSource[length] = '\0';
 	const char** shaderSourcesArray = new const char* [1];
 	stream.read(shaderSource, length);
-	printf("shader source: %s\n", shaderSource);
+	//printf("shader source: %s\n", shaderSource);
 
 	shaderSourcesArray[0] = shaderSource;
 
@@ -589,6 +602,8 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_SRGB_CAPABLE, 1);
 	glfwWindowHint(GLFW_SAMPLES, 16);
+
+
 	GLFWwindow* window = glfwCreateWindow(GLsizei(frameX), GLsizei(frameY), "Renderer", NULL, NULL);
 	if (window == NULL)
 	{
@@ -642,16 +657,25 @@ int main()
 
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//basic bitch white
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f)); //red light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//another basic bitch white
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f)); //blue light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//white light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54f, 0.9f, 0.0f, 0.0f));//transparenty
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f));//mirrorA
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//yellow
 
 
 	vector<Sphere> spheres;
 	spheres.reserve(MAX_SPHERES);
-	spheres.push_back(Sphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 1.0f));
+	spheres.push_back(Sphere(fvec4(5.0f, 6.0f, 3.0f, 0.0f), Shape(AABB(), 4u, 0), 1.0f));
+	spheres.push_back(Sphere(fvec4(-5.0f, 6.0f, 3.0f, 0.0f), Shape(AABB(), 4u, 0), 1.0f));
+	spheres.push_back(Sphere(fvec4(3.0f, 2.0f, -3.0f, 0.0f), Shape(AABB(), 7u, 0), 2.0f));
+	spheres.push_back(Sphere(fvec4(-3.0f, 2.0f, -3.0f, 0.0f), Shape(AABB(), 6u, 0), 2.0f));
+	spheres.push_back(Sphere(fvec4(0.0f, 2.0f, 5.0f, 0.0f), Shape(AABB(), 5u, 0), 2.0f));
+
+
 	//spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
 	//spheres.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
 	//spheres.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
@@ -663,13 +687,13 @@ int main()
 	vector<Vertex> vertices;
 	vertices.reserve(MAX_TRIANGLES * 3);
 
-	vertices.push_back(Vertex(fvec4(-5, 0, -5, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(5, 0, -5, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(5, 0, 5, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
-	vertices.push_back(Vertex(fvec4(-5, 0, 5, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-50, 0, -50, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(50, 0, -50, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(50, 0, 50, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-50, 0, 50, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
 
-	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 3));
 	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
+	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 1));
 
 
 	//TODO: add triangles here
@@ -682,6 +706,24 @@ int main()
 	int lastSecondFrameCount = -1;
 
 	uint32_t fps = 30;
+
+
+	cl_event* waitAfterWrites = new cl_event[4];
+
+	AABB sceneBounding = redoAABBs(spheres, triangles, vertices);
+
+	status = clEnqueueWriteBuffer(cmdQueue, clSpheres, CL_FALSE, 0, sizeof(Shape) * MAX_SPHERES, spheres.data(), 0, NULL, &waitAfterWrites[0]);
+	printf("write1 %i\n", status);
+	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_TRIANGLES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
+	printf("write2 %i\n", status);
+	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
+	printf("write3 %i\n", status);
+	status = clEnqueueWriteBuffer(cmdQueue, clTriangles, CL_FALSE, 0, sizeof(Triangle) * MAX_TRIANGLES, triangles.data(), 0, NULL, &waitAfterWrites[3]);
+	printf("write4 %i\n", status);
+	cl_event* waitAfterFinalWrite = new cl_event;
+	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 4, waitAfterWrites, waitAfterFinalWrite);
+	printf("write5 %i\n", status);
+
 
 #if defined(OUTPUTFRAMES)|| defined(OUTPUTPASSES)
 
@@ -749,7 +791,7 @@ int main()
 		clearBuffers();
 
 
-		//fvec3 eye = fvec3(sin(currentFrame*3.0f) * 15, 7, cos(currentFrame*3.0f) * 15);
+		//fvec3 eye = fvec3(sin(currentFrame) * 15, 7, cos(currentFrame) * 15);
 
 		fvec3 eye = fvec3(0.0f, 7.0f, 15.0f);
 
@@ -772,133 +814,54 @@ int main()
 		float focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
 		//qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
 		
-		AABB sceneBounding = redoAABBs(spheres, triangles, vertices);
+		sceneBounding = redoAABBs(spheres, triangles, vertices);
 
 
+		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), 0, focal, currentFrame, 100u, uint(spheres.size()), uint(triangles.size()), MONTE_CARLO_SAMPLES};
 
 
-		auto randSeed = numGen();
-		
-
-		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), randSeed, focal, currentFrame, 100u, uint(spheres.size()), uint(triangles.size()), MONTE_CARLO_SAMPLES};
-
-
-
-		cl_event* waitAfterWrites = new cl_event[6];
-
-		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[0]);
-		//printf("enqueue clOtherData %i\n", status);
-		status = clEnqueueWriteBuffer(cmdQueue, clSpheres, CL_FALSE, 0, sizeof(Shape) * MAX_SPHERES, spheres.data(), 0, NULL, &waitAfterWrites[1]);
-		//printf("enqueue clShapes %i\n", status);
-		status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_FALSE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[2]);
-		//printf("enqueue clMaterials %i\n", status);
-		status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX*frameY, randomBuffer, 0, NULL, &waitAfterWrites[3]);
-		//printf("enqueue clMaterials %i\n", status);
-		status = clEnqueueWriteBuffer(cmdQueue, clTriangles, CL_FALSE, 0, sizeof(Triangle) * MAX_TRIANGLES, triangles.data(), 0, NULL, &waitAfterWrites[4]);
-
-		status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_TRIANGLES*3, vertices.data(), 0, NULL, &waitAfterWrites[5]);
+		cl_event* otherDataEvent = new cl_event;
+		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 1, waitAfterFinalWrite, otherDataEvent);
+		printf("enqueue clOtherData %i\n", status);
 
 
 		cl_event* waitAfterProcessing = new cl_event;
-
-
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 6, waitAfterWrites, &waitAfterProcessing[i]);
+		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 1, otherDataEvent, waitAfterProcessing);
+		printf("enqueue range kernal %i\n", status);
 		
 
 
 		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, 1, waitAfterProcessing, NULL);
-		//printf("enqueue read %i\n", status);
-		
+		printf("enqueue read %i\n", status);
 
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, frameBuffer);
+
+
+		//glBindFramebuffer(GL_READ_FRAMEBUFFER, clFrameBuffer);
+		//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		//glBlitFramebuffer(0, 0, frameX, frameY, 0, 0, frameX, frameY, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glDrawArrays(GL_TRIANGLES, 0, 3);
+		glfwSwapBuffers(window);
+		processInput(window);
+		glfwPollEvents();
+
+		/*
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, frameBuffer);
+
+
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
 		processInput(window);
 		glfwPollEvents();
+*/
 
 
-
-		/*
-		for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
-			//clearDrawBuffer();
-			if (i % 1 == 0) {
-				printf("on montecarlo %i\n", i);
-			}
-#ifdef CONCURRENT_FOR
-			concurrency::parallel_for(uint64_t(0), uint64_t(frameX * frameY), [&](uint64_t i) {
-#else
-			for (uint64_t i = 0; i < frameX * frameY; i++) {
-#endif
-				uint32_t x = i % frameX;
-				uint32_t y = i / frameX;
-
-		        prd = (x == 500 && y == 250) && prd;
-				double normalizedX = (double(x) / double(frameX)) - 0.5;
-				double normalizedY = (double(y) / double(frameY)) - 0.5;
-
-				dvec3 coordOnScreen = (normalizedX * camRight) + (normalizedY * camUp) + eye + (camForward * focal);
-				dvec2 clipSpacePixelSize(dvec2(1.0 / double(frameX - 1.0), 1.0 / double(frameY - 1.0)));
-
-#ifdef PIXEL_MULTISAMPLE_N
-				uint32_t n = PIXEL_MULTISAMPLE_N;
-#else
-				uint32_t n = 1;
-#endif
-				dvec3 colorAcum(0);
-				HitResult minRayResult;//TODO: use this for drawing the lines if you want to do that at some point
-									   //TODO: change the multisampling to do a few circles instead of a square? or does it really matter, idk
-				for (uint32_t x = 1; x <= n; x++) {
-					double offsetX = x * (clipSpacePixelSize.x / (n + 1));
-					for (uint32_t y = 1; y <= n; y++) {
-						double offsetY = y * (clipSpacePixelSize.y / (n + 1));
-
-						dvec3 rayVector = glm::normalize((coordOnScreen + dvec3(offsetX, offsetY, 0.0)) - eye);
-						Ray initialRay(eye, rayVector);
-
-						dvec3 colorOut = pathTrace(initialRay, fi);
-						if(prd)printf("color out: %s\n", glm::to_string(colorOut).c_str());
-
-						colorAcum += colorOut;
-
-
-					}
-				}
-				drawBuffer[x + (y * frameX)] += colorAcum / double(n * n);
-				if (prd) {
-					drawBuffer[x + (y * frameX)] = dvec3(0.0, 0.0, 1.0);
-
-				}
-#ifdef CONCURRENT_FOR
-				});
-#else 
-			}
-#endif 
-			for (uint64_t j = 0; j < frameX * frameY; j++) {
-				frameBuffer[j] = ((drawBuffer[j] / float(i+1)));
-				frameBuffer[j].x = cbrt(frameBuffer[j].x);
-				frameBuffer[j].y = cbrt(frameBuffer[j].y);
-				frameBuffer[j].z = cbrt(frameBuffer[j].z);
-			}
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, frameX, frameY, 0, GL_RGB, GL_FLOAT, frameBuffer);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-			glfwSwapBuffers(window);
-			processInput(window);
-			glfwPollEvents();
-			
-#ifdef OUTPUTPASSES
-			if (i % OUTPUTPASSES == 0) {
-				printf("outputting pass at i %i with name %s\n", i, (std::to_string((i / OUTPUTPASSES) + 1) + ".png").c_str());
-				saveImage((std::to_string((i/OUTPUTPASSES)+1) + ".png"), window);
-			}
-#endif
-#ifdef PPCIN
-			cin.get();
-#endif
-		}*/
 
 
 
@@ -906,6 +869,7 @@ int main()
 #ifdef OUTPUTFRAMES
 		saveImage((std::to_string(frameCounter) + ".png"), window);
 #endif
+
 #ifdef CIN
 		cin.get();
 #endif

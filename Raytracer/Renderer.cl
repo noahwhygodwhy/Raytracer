@@ -43,7 +43,6 @@ __global const Triangle* triangles, __global const Vertex* vertices, uint number
             HitResult resB = rayHitTriangle(theTriangle, ray, vertices, i);
             if(resB.hit) {
                 if (resB.depth < minRayResult.depth) {
-                    //printf("there was a triangle\n");
                     minRayResult = resB;
                 }
             }
@@ -124,26 +123,6 @@ float3 getRefractionRay(float3 hitNormal, float3 incidentVector, float objectIOR
 float3 randomHemisphericalVector(float3 normal, ulong* state) {
 
 
-
-    //return (float3)(0.0, 1.0, 0.0);
-    //return (float3)(0.0f, 1.0f, 0.0f);
-//     float3 randomVector = normalize((float3)(rand(idx+randomCounter++), rand(idx+randomCounter++), rand(idx+randomCounter++)));
-//     //if(idx == 500+(1000*550))printf("new random hemisphere vector: %f, %f, %f\n", randomVector.x, randomVector.y, randomVector.z);
-//    // if(idx == 500+(1000*550))printf("normal vector: %f, %f, %f\n", normal.x, normal.y, normal.z);
-//     float dotVN = dot(randomVector, normal);
-//     if(fabs(dotVN)==1.0){
-//         return (float3)(0.0, 1.0, 0.0);
-
-//     } else {
-//         float3 rotVec = cross(randomVector, normal);
-//         return normalize(rotateVector(randomVector, acos(dotVN), rotVec));
-        
-//     }
-
-
-    //return (float3)(0.0f, 1.0f, 0.0f);
-
-    //printf("called random hemispherical vector\n");
 	float3 outVec = (float3)(0.0f, 0.0f, 0.0f);
 
 	normal = normalize(normal);
@@ -177,9 +156,6 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
     {
 
 
-
-    float randomCounter = otherData->currentTime;
-
     int frameX = get_global_size(0);
     int frameY = get_global_size(1);
 
@@ -192,26 +168,6 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
 
     int pixelIdx = pixelX+(frameX*pixelY);
 
-    // if(pixelIdx == 0) {
-    //     printf("number of triangles: %u\n", otherData->numberOfTriangles);
-    //     Triangle a = triangles[0];
-    //     printf("%u, %u, %u\n", a.vertA, a.vertB, a.vertC);
-
-    //     Vertex vertA = vertices[a.vertA];
-    //     printf("%f, %f, %f\n", vertA.position.x, vertA.position.y, vertA.position.z);
-    //     vertA = vertices[a.vertB];
-    //     printf("%f, %f, %f\n", vertA.position.x, vertA.position.y, vertA.position.z);
-    //     vertA = vertices[a.vertC];
-    //     printf("%f, %f, %f\n", vertA.position.x, vertA.position.y, vertA.position.z);
-
-
-
-
-    //     return;
-    // } else {
-
-    //     return;
-    // }
 
 
     ulong state = randomBuffer[pixelIdx];
@@ -241,41 +197,15 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
     ray.origin = otherData->eye.xyz;
     newRay = ray;
 
-//   printf("pixelidx: %i, randomseed: %lu, ^^^ %lu\n", pixelIdx, otherData->randomSeed, ((ulong)pixelIdx) ^ otherData->randomSeed); 
-//     return;
-
-
-//     printf("state: %u\n", otherData->randomSeed);
-
-    
-//     return;  
-    
-    //printf("state: %u\n", otherData->randomSeed);
-    // return;
-    // float3 totalRadiance = (float3)(0.0f, 0.0f, 0.0f);
-
-    // float3 layerMultiplier = (float3)(1.0f, 1.0f, 1.0f);
-    // float3 prevLayerRadiance = (float3)(0.0f, 0.0f, 0.0f);
-    //float3 kS = (float3)(1.0f, 1.0f, 1.0f);
-    //float3 cT = (float3)(1.0f, 1.0f, 1.0f);
-   // float3 kD = (float3)(1.0f, 1.0f, 1.0f);
-
-    //float3 upperColor = (float3)(1.0f, 1.0f, 1.0f);
 
     float ior = 1.0;
 
-    //float3 thisRadiance =(float3)(0.0f, 0.0f, 0.0f);
-
-    //HitResult prevHit;
     HitResult newHit;
     
 
     //http://raytracey.blogspot.com/2016/11/opencl-path-tracing-tutorial-2-path.html
 
     float3 monteAccum = (float3)(0.0f);
-    //printf("number of samples: %u\n", otherData->numberOfSamples);
-
-    //return;
     for(uint monte = 0; monte < otherData->numberOfSamples; monte++){
         ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - otherData->eye.xyz);
         ray.origin = otherData->eye.xyz;
@@ -283,9 +213,7 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
 
         float3 accumulated = (float3)(0.0f);
         float3 masked = (float3)(1.0f);
-        randomCounter+=1.5123f;
         for(uint layer = 0; layer < otherData->maxDepth; layer++) {
-            if(pixelX == 300 && pixelY == 200)printf("\n\n\nlayer: %u\n", layer);
 
             ray = newRay;
             newHit = shootRay(ray, spheres, otherData->numberOfSpheres, triangles, vertices, otherData->numberOfTriangles);
@@ -303,29 +231,17 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
             // return;
             //printf("there was a hit\n");
             
-            if(pixelX == 300 && pixelY == 200)printf("normal: %f, %f, %f\n", newHit.normal.x, newHit.normal.y, newHit.normal.z);
-            if(pixelX == 300 && pixelY == 200)printf("hit pos: %f, %f, %f\n", newHit.position.x, newHit.position.y, newHit.position.z);
-
             float transparencyDecider = rand(&state);
             float reflectanceDecider = rand(&state);
-            //float specularDecider = rand(pixelIdx+randomCounter++);
+
 
             float hitAngle = acos(dot(newHit.normal, -ray.direction));
 
             bool entering = hitAngle < (M_PI_F / 2.0);
 
-            if(pixelX == 300 && pixelY == 200)printf("mat index: %u\n", newHit.matIdx);
 
             Material mat = materials[newHit.matIdx];
 
-            if(pixelX == 300 && pixelY == 200)printf("mat.color: %f, %f, %f\n", mat.color.x, mat.color.y, mat.color.z);
-
-            //printf("spheres[newHit.shapeIdx].shape.matIdx %u, layer: %u, deciders: %f<%f, %f<%f, emmision: %f, %f, %f\n", spheres[newHit.shapeIdx].shape.matIdx, layer, transparencyDecider, mat.trans,  reflectanceDecider, mat.smooth, mat.emission.r, mat.emission.g, mat.emission.b);//, specularDecider);
-            
-            /*if(!(mat.emission.r == 0.0 && mat.emission.g == 0.0 && mat.emission.b == 0.0)){
-
-                break;
-            }*/
             
             if (transparencyDecider < mat.trans) {
                 newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
@@ -360,10 +276,9 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
                     
                     float3 newdir = normalize(u * cos(rand1)*rand2s + v*sin(rand1)*rand2s + w*sqrt(1.0f - rand2));
                     
-                    newRay.direction = normalize(randomHemisphericalVector(newHit.normal, &state));
+                    newRay.direction = newdir;//normalize(randomHemisphericalVector(newHit.normal, &state));
                 }
-                if(pixelX == 300 && pixelY == 200)printf("new ray dir: %f, %f, %f\n", newRay.direction.x, newRay.direction.y, newRay.direction.z);
-                if(pixelX == 300 && pixelY == 200)printf("new ray orig: %f, %f, %f\n", newRay.origin.x, newRay.origin.y, newRay.origin.z);
+
 
     
     //calculate lighting stuff
@@ -391,35 +306,18 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
 
                 float3 kD = ((1.0f - kS) * (1.0f - mat.metal));//*diff;
                 
-                if(pixelX == 300 && pixelY == 200)printf("kd:%f, ct:%f, diff:%f\n", kD, cT, diff);
-
-                //if(pixelX == 825 && pixelY == 300)printf("V: %f, %f, %f\n", V.x, V.y, V.z);
-                //if(pixelX == 825 && pixelY == 300)printf("L: %f, %f, %f\n", L.x, L.y, L.z);
-                //if(pixelX == 825 && pixelY == 300)printf("N: %f, %f, %f\n", N.x, N.y, N.z);
-                //if(pixelX == 825 && pixelY == 300)printf("diff: %f, spec: %f\n", diff, spec);
-
                 accumulated += mat.emission.xyz*masked;
                 masked *= mat.color.xyz;
                 masked*= (diff*kD)+(cT);
 
                 
-                if(pixelX == 300 && pixelY == 200)printf("masked: %f, %f, %f\n", masked.x, masked.y, masked.z);
-                if(pixelX == 300 && pixelY == 200)printf("accumulated: %f, %f, %f\n", accumulated.x, accumulated.y, accumulated.z);
-                //accumulated = (float3)(fabs(newHit.normal.x), fabs(newHit.normal.y), fabs(newHit.normal.z));
-                //break;
-                // if(pixelIdx == 500+(1000*550))printf("KD, KS, CT: %f, %f, %f\n", kD.x, kS.y, cT.z);
-                //if(pixelX == 500 && pixelY == 600)printf("%i, %i, KD, KS, CT: %f, %f, %f\n", pixelX, pixelY, kD.x, kS.y, cT.z);
-                
-                //totalRadiance = totalRadiance + (layerMultiplier * mat.color.xyz);
-                //prevLayerRadiance = mat.color.xyz;
-                //layerMultiplier *= (kD);
 
                 
             }
             
             
         }
-        //if(pixelX == 825 && pixelY == 300)printf("accumlated is %f, %f, %f\n", accumulated.x, accumulated.y, accumulated.z);
+
         monteAccum += accumulated;
     }
     //uint layer;
@@ -428,7 +326,7 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
     //float4 result = {1.0, 0.0, 0.0, 1.0};
     frameBuffer[pixelIdx] = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
     randomBuffer[pixelIdx] = state;
-    if(pixelX == 300 || pixelY == 200) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
+    //if(pixelX == 300 || pixelY == 200) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
     //frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
 }
 
