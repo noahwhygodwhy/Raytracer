@@ -18,15 +18,15 @@ using namespace glm;
 
 #define MAX_PATH 500
 //#define OUTPUTPASSES 50
-#define OUTPUTFRAMES 189
-//#define EVERYFRAME INFINITY
+//#define OUTPUTFRAMES 189
+#define EVERYFRAME INFINITY
 #define CONCURRENT_FOR
 #define KDTRACE
-//#define CIN
+#define CIN
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 1000
+#define MONTE_CARLO_SAMPLES 1
 
 
 //#define BASIC_BITCH
@@ -365,14 +365,26 @@ dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, 
 
 
 
-AABB redoAABBs(vector<Sphere>& shapes) {
+AABB redoAABBs(vector<Sphere>& spheres, vector<Triangle>&triangles, const vector<Vertex>& vertices) {
 
 	AABB toReturn = { fvec4(0.0), fvec4(0.0) };
-	for (Sphere& s : shapes) {
+	for (Sphere& s : spheres) {
 		s.shape.boundingBox.min = s.origin - fvec4(s.radius, s.radius, s.radius, 0.0f);
 		s.shape.boundingBox.max = s.origin + fvec4(s.radius, s.radius, s.radius, 0.0f);
 		toReturn.min = glm::min(toReturn.min, s.shape.boundingBox.min);
 		toReturn.max = glm::max(toReturn.max, s.shape.boundingBox.max);
+	}
+	for (Triangle& t : triangles) {
+		t.shape.boundingBox.min = t.shape.boundingBox.max = vertices[t.vertA].position;
+
+		t.shape.boundingBox.min = min(vertices[t.vertB].position, t.shape.boundingBox.min);// -fvec4(fvec3(bias), 0.0);
+		t.shape.boundingBox.min = min(vertices[t.vertC].position, t.shape.boundingBox.min);// - fvec4(fvec3(bias), 0.0);
+
+		t.shape.boundingBox.max = max(vertices[t.vertB].position, t.shape.boundingBox.max);// + fvec4(fvec3(bias), 0.0);
+		t.shape.boundingBox.max = max(vertices[t.vertC].position, t.shape.boundingBox.max);// + fvec4(fvec3(bias), 0.0);
+
+		toReturn.min = glm::min(toReturn.min, t.shape.boundingBox.min);
+		toReturn.max = glm::max(toReturn.max, t.shape.boundingBox.max);
 	}
 
 	return toReturn;
@@ -518,7 +530,7 @@ int main()
 
 	cl_program program = clCreateProgramWithSource(context, 1, shaderSourcesArray, NULL, &status);
 
-	const char* options = { "" };
+	const char* options = { "-cl-single-precision-constant" };
 	status = clBuildProgram(program, 1, &device, options, NULL, NULL);
 	printf("build program %i\n", status);
 	if (status != CL_SUCCESS)
@@ -545,6 +557,8 @@ int main()
 	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
 	printf("set args 4 %i\n", status);
 	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clTriangles);
+	printf("set args 4 %i\n", status);
+	status = clSetKernelArg(kernel, 6, sizeof(cl_mem), &clVerts);
 	printf("set args 4 %i\n", status);
 
 
@@ -632,17 +646,32 @@ int main()
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));
 
 
 	vector<Sphere> spheres;
 	spheres.reserve(MAX_SPHERES);
-	spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
-	spheres.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
-	spheres.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
-	spheres.push_back(Sphere(fvec4(-6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 3u), 1.0f));
+	spheres.push_back(Sphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 1.0f));
+	//spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
+	//spheres.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
+	//spheres.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
+	//spheres.push_back(Sphere(fvec4(-6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 3u), 1.0f));
 
 	vector<Triangle> triangles;
 	triangles.reserve(MAX_TRIANGLES);
+
+	vector<Vertex> vertices;
+	vertices.reserve(MAX_TRIANGLES * 3);
+
+	vertices.push_back(Vertex(fvec4(-5, 0, -5, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(5, 0, -5, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(5, 0, 5, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-5, 0, 5, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
+
+	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 3));
+	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
+
+
 	//TODO: add triangles here
 
 
@@ -720,9 +749,9 @@ int main()
 		clearBuffers();
 
 
-		fvec3 eye = fvec3(sin(currentFrame*3.0f) * 15, 7, cos(currentFrame*3.0f) * 15);
+		//fvec3 eye = fvec3(sin(currentFrame*3.0f) * 15, 7, cos(currentFrame*3.0f) * 15);
 
-		//fvec3 eye = fvec3(0.0f, 7.0f, 15.0f);
+		fvec3 eye = fvec3(0.0f, 7.0f, 15.0f);
 
 		fvec3 lookat = fvec3(0.0, 3.0, 0.0);
 		//lookat = vec3(0.0, -5.0, 15);
@@ -743,54 +772,38 @@ int main()
 		float focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
 		//qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
 		
-		AABB sceneBounding = redoAABBs(shapes);
+		AABB sceneBounding = redoAABBs(spheres, triangles, vertices);
 
 
-
-		Sphere asdfdsa = shapes.at(0);
-
-		RAND_MAX;
 
 
 		auto randSeed = numGen();
 		
 
-		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), randSeed, focal, currentFrame, 100u, uint(shapes.size()), MONTE_CARLO_SAMPLES };
+		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), randSeed, focal, currentFrame, 100u, uint(spheres.size()), uint(triangles.size()), MONTE_CARLO_SAMPLES};
 
 
 
-		cl_event* waitAfterWrites = new cl_event[4];
+		cl_event* waitAfterWrites = new cl_event[6];
 
 		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[0]);
 		//printf("enqueue clOtherData %i\n", status);
-		status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[1]);
+		status = clEnqueueWriteBuffer(cmdQueue, clSpheres, CL_FALSE, 0, sizeof(Shape) * MAX_SPHERES, spheres.data(), 0, NULL, &waitAfterWrites[1]);
 		//printf("enqueue clShapes %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_FALSE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[2]);
 		//printf("enqueue clMaterials %i\n", status);
 		status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX*frameY, randomBuffer, 0, NULL, &waitAfterWrites[3]);
 		//printf("enqueue clMaterials %i\n", status);
+		status = clEnqueueWriteBuffer(cmdQueue, clTriangles, CL_FALSE, 0, sizeof(Triangle) * MAX_TRIANGLES, triangles.data(), 0, NULL, &waitAfterWrites[4]);
 
-		//printf("sizeof sphere on host: %zu\n", sizeof(Sphere));
-		//printf("offset on host: %zu\n", offsetof(Sphere, radius));
+		status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_TRIANGLES*3, vertices.data(), 0, NULL, &waitAfterWrites[5]);
 
-		
-
-		//printf("origin:");
-		//printf("%s\n", glm::to_string(x.origin).c_str());
-		//printf("%s\n", glm::to_string(x.shape.boundingBox.min).c_str());
-		//printf("%s\n", glm::to_string(x.shape.boundingBox.max).c_str());
-		//printf("matidx: %u\n", x.shape.matIdx);
-
-		
 
 		cl_event* waitAfterProcessing = new cl_event;
 
 
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 4, waitAfterWrites, &waitAfterProcessing[i]);
-		//for (int i = 0; i < MONTE_CARLO_SAMPLES; i++) {
-		//	//printf("enqueue rangekernal %i\n", status);
-		//}
-
+		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 6, waitAfterWrites, &waitAfterProcessing[i]);
+		
 
 
 		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, 1, waitAfterProcessing, NULL);

@@ -2,19 +2,14 @@
 #define SHARED_STRUCTS_H
 
 
+enum shapeType {
+	SPHERE = 0,
+	TRIANGLE
+
+
+};
 
 #ifdef CPP
-
-    //typedef float4 cl_float4;
-    //typedef float cl_float;
-    // typedef struct alignas(16) rayAABBResult {
-    //     float4 enter;
-    //     float4 exit;
-    //     bool hit;
-        
-    // }  rayAABBResult;
-
-
 
     typedef struct alignas(16) OtherData {
         float4 clearColor;
@@ -42,23 +37,6 @@
         float smooth;
     }  Material;
 
-
-
-    // typedef struct alignas(16) Ray {
-    //     float4 origin;
-    //     float4 direction;
-    // } Ray;
-
-
-    // typedef struct alignas(16) HitResult {
-    //     float4 position;
-    //     float4 normal;
-    //     float4 uv;
-    //     float depth;
-    //     uint shapeIdx;
-    //     bool hit;
-    // }  HitResult;
-
     typedef struct alignas(16) AABB {
         float4 min;
         float4 max; 
@@ -68,7 +46,7 @@
     typedef struct alignas(16) Shape {
         AABB boundingBox;
         uint matIdx;
-        //uint shapeIdx;
+        uint type;
         
     }  Shape;
 
@@ -87,6 +65,7 @@
     } Vertex;
 
     typedef struct Triangle{
+        Shape shape;
         uint vertA;
         uint vertB;
         uint vertC;
@@ -157,7 +136,7 @@
         float3 normal;
         float2 uv;
         float depth;
-        uint shapeIdx;
+        uint matIdx;
         bool hit;
     } HitResult;
 
@@ -170,7 +149,7 @@
     typedef struct Shape {
         AABB boundingBox;
         uint matIdx;
-        //uint shapeIdx;
+        uint type;
         
     } Shape;
 
@@ -189,6 +168,7 @@
     } Vertex;
 
     typedef struct Triangle{
+        Shape shape;
         uint vertA;
         uint vertB;
         uint vertC;

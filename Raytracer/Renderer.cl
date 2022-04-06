@@ -1,5 +1,6 @@
 #include "rand.cl"
 #include "sharedStructs.cl"
+#include "triangle.cl"
 #include "sphere.cl"
 #include "shape.cl"
 #include "helpers.cl"
@@ -7,9 +8,11 @@
 
 
 
-#define BIAS 1e-4f
+#define BIAS 1e-3f
 
-HitResult rayHitListOfShapes(const Ray ray, __global const Sphere* spheres, uint numberOfSpheres){
+HitResult rayHitListOfShapes(const Ray ray, 
+__global const Sphere* spheres, uint numberOfSpheres,
+__global const Triangle* triangles, __global const Vertex* vertices, uint numberOfTriangles){
     int x = (int)1<INFINITY;
 
     HitResult minRayResult;
@@ -29,6 +32,22 @@ HitResult rayHitListOfShapes(const Ray ray, __global const Sphere* spheres, uint
                 }
             }
         }
+    }
+    
+    for (uint i = 0; i < numberOfTriangles; i++) {
+        
+        Triangle theTriangle = triangles[i];
+        //rayAABBResult resA = rayAABB(theTriangle.shape.boundingBox, ray);
+
+        //if (resA.hit) {
+            HitResult resB = rayHitTriangle(theTriangle, ray, vertices, i);
+            if(resB.hit) {
+                if (resB.depth < minRayResult.depth) {
+                    //printf("there was a triangle\n");
+                    minRayResult = resB;
+                }
+            }
+        //}
     }
     return minRayResult;
 }    
@@ -140,9 +159,10 @@ float3 randomHemisphericalVector(float3 normal, ulong* state) {
 
 
 
-HitResult shootRay(Ray ray, __global const Sphere* spheres, uint numberOfSpheres) {
+HitResult shootRay(Ray ray, __global const Sphere* spheres, uint numberOfSpheres,
+__global const Triangle* triangles, __global const Vertex* vertices, uint numbmerOfTriangles) {
 
-	return rayHitListOfShapes(ray, spheres, numberOfSpheres);
+	return rayHitListOfShapes(ray, spheres, numberOfSpheres, triangles, vertices, numbmerOfTriangles);
 
     //kd tree stuff goes here if you do that
 }
@@ -152,8 +172,11 @@ __kernel void render(
     __global const Sphere* spheres,
     __global const Material* materials,
     __global float4* frameBuffer,
-    __global ulong* randomBuffer) //an array of maxJumps hitResults
+    __global ulong* randomBuffer,
+__global const Triangle* triangles, __global const Vertex* vertices) //an array of maxJumps hitResults
     {
+
+
 
     float randomCounter = otherData->currentTime;
 
@@ -168,6 +191,28 @@ __kernel void render(
 
 
     int pixelIdx = pixelX+(frameX*pixelY);
+
+    // if(pixelIdx == 0) {
+    //     printf("number of triangles: %u\n", otherData->numberOfTriangles);
+    //     Triangle a = triangles[0];
+    //     printf("%u, %u, %u\n", a.vertA, a.vertB, a.vertC);
+
+    //     Vertex vertA = vertices[a.vertA];
+    //     printf("%f, %f, %f\n", vertA.position.x, vertA.position.y, vertA.position.z);
+    //     vertA = vertices[a.vertB];
+    //     printf("%f, %f, %f\n", vertA.position.x, vertA.position.y, vertA.position.z);
+    //     vertA = vertices[a.vertC];
+    //     printf("%f, %f, %f\n", vertA.position.x, vertA.position.y, vertA.position.z);
+
+
+
+
+    //     return;
+    // } else {
+
+    //     return;
+    // }
+
 
     ulong state = randomBuffer[pixelIdx];
 
@@ -240,10 +285,13 @@ __kernel void render(
         float3 masked = (float3)(1.0f);
         randomCounter+=1.5123f;
         for(uint layer = 0; layer < otherData->maxDepth; layer++) {
+            if(pixelX == 300 && pixelY == 200)printf("\n\n\nlayer: %u\n", layer);
 
             ray = newRay;
-            newHit = shootRay(ray, spheres, otherData->numberOfSpheres);
-
+            newHit = shootRay(ray, spheres, otherData->numberOfSpheres, triangles, vertices, otherData->numberOfTriangles);
+            
+            
+            //hit needsmat idx not shape idx
             if(!newHit.hit){
                 if(layer==0u){
                     accumulated = masked*otherData->clearColor.xyz;
@@ -251,6 +299,12 @@ __kernel void render(
                 break;
 
             }
+            // frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
+            // return;
+            //printf("there was a hit\n");
+            
+            if(pixelX == 300 && pixelY == 200)printf("normal: %f, %f, %f\n", newHit.normal.x, newHit.normal.y, newHit.normal.z);
+            if(pixelX == 300 && pixelY == 200)printf("hit pos: %f, %f, %f\n", newHit.position.x, newHit.position.y, newHit.position.z);
 
             float transparencyDecider = rand(&state);
             float reflectanceDecider = rand(&state);
@@ -260,8 +314,11 @@ __kernel void render(
 
             bool entering = hitAngle < (M_PI_F / 2.0);
 
-            Material mat = materials[spheres[newHit.shapeIdx].shape.matIdx];
+            if(pixelX == 300 && pixelY == 200)printf("mat index: %u\n", newHit.matIdx);
 
+            Material mat = materials[newHit.matIdx];
+
+            if(pixelX == 300 && pixelY == 200)printf("mat.color: %f, %f, %f\n", mat.color.x, mat.color.y, mat.color.z);
 
             //printf("spheres[newHit.shapeIdx].shape.matIdx %u, layer: %u, deciders: %f<%f, %f<%f, emmision: %f, %f, %f\n", spheres[newHit.shapeIdx].shape.matIdx, layer, transparencyDecider, mat.trans,  reflectanceDecider, mat.smooth, mat.emission.r, mat.emission.g, mat.emission.b);//, specularDecider);
             
@@ -305,6 +362,8 @@ __kernel void render(
                     
                     newRay.direction = normalize(randomHemisphericalVector(newHit.normal, &state));
                 }
+                if(pixelX == 300 && pixelY == 200)printf("new ray dir: %f, %f, %f\n", newRay.direction.x, newRay.direction.y, newRay.direction.z);
+                if(pixelX == 300 && pixelY == 200)printf("new ray orig: %f, %f, %f\n", newRay.origin.x, newRay.origin.y, newRay.origin.z);
 
     
     //calculate lighting stuff
@@ -332,6 +391,8 @@ __kernel void render(
 
                 float3 kD = ((1.0f - kS) * (1.0f - mat.metal));//*diff;
                 
+                if(pixelX == 300 && pixelY == 200)printf("kd:%f, ct:%f, diff:%f\n", kD, cT, diff);
+
                 //if(pixelX == 825 && pixelY == 300)printf("V: %f, %f, %f\n", V.x, V.y, V.z);
                 //if(pixelX == 825 && pixelY == 300)printf("L: %f, %f, %f\n", L.x, L.y, L.z);
                 //if(pixelX == 825 && pixelY == 300)printf("N: %f, %f, %f\n", N.x, N.y, N.z);
@@ -340,7 +401,10 @@ __kernel void render(
                 accumulated += mat.emission.xyz*masked;
                 masked *= mat.color.xyz;
                 masked*= (diff*kD)+(cT);
+
                 
+                if(pixelX == 300 && pixelY == 200)printf("masked: %f, %f, %f\n", masked.x, masked.y, masked.z);
+                if(pixelX == 300 && pixelY == 200)printf("accumulated: %f, %f, %f\n", accumulated.x, accumulated.y, accumulated.z);
                 //accumulated = (float3)(fabs(newHit.normal.x), fabs(newHit.normal.y), fabs(newHit.normal.z));
                 //break;
                 // if(pixelIdx == 500+(1000*550))printf("KD, KS, CT: %f, %f, %f\n", kD.x, kS.y, cT.z);
@@ -364,7 +428,7 @@ __kernel void render(
     //float4 result = {1.0, 0.0, 0.0, 1.0};
     frameBuffer[pixelIdx] = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
     randomBuffer[pixelIdx] = state;
-    //if(pixelX == 825 || pixelY == 300) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
+    if(pixelX == 300 || pixelY == 200) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
     //frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
 }
 

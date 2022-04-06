@@ -3,7 +3,7 @@
 
 #include "sharedStructs.cl"
 
-HitResult rayHitSphere(const Sphere sphere, const Ray ray, uint shapeIdx){
+HitResult rayHitSphere(const Sphere sphere, const Ray ray, int shapeIdx){
     HitResult hit;
     hit.hit = false;
 
@@ -39,7 +39,7 @@ HitResult rayHitSphere(const Sphere sphere, const Ray ray, uint shapeIdx){
 	hit.uv = (float2)(atan2(hit.normal.x, hit.normal.z) / (2.0f * M_PI_F) + 0.5f, hit.normal.y * 0.5f + 0.5f);
 
 	hit.depth = t0;
-	hit.shapeIdx = shapeIdx;
+	hit.matIdx = sphere.shape.matIdx;
 
 	return hit;
 }
