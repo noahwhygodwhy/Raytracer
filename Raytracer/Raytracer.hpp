@@ -15,11 +15,21 @@
 //#include <execution>
 
 
-#include <CL/cl.h>
-
+//#include <CL/cl.h>
+#include "opencl.hpp"
 
 #include "glad/glad.h"
+
 #include <GLFW/glfw3.h>
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+
+#include <GLFW/glfw3native.h>
+
+#include <WinUser.h>
+
+
 #define GLM_FORCE_SWIZZLE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -72,8 +82,6 @@ void processInput(GLFWwindow* window)
 
 
 uint64_t* randomBuffer;
-fvec4* frameBuffer;
-fvec4* drawBuffer;
 
 
 #endif

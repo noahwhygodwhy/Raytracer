@@ -158,5 +158,8 @@
     <ClInclude Include="CookTorrance.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="opencl.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

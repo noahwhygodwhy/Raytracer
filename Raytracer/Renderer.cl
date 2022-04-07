@@ -5,7 +5,7 @@
 #include "shape.cl"
 #include "helpers.cl"
 #include "cookTorance.cl"
-
+#include "material.cl"
 
 
 #define BIAS 1e-3f
@@ -150,9 +150,12 @@ __kernel void render(
     __global const OtherData* otherData,
     __global const Sphere* spheres,
     __global const Material* materials,
-    __global float4* frameBuffer,
     __global ulong* randomBuffer,
-__global const Triangle* triangles, __global const Vertex* vertices) //an array of maxJumps hitResults
+    __global const Triangle* triangles, 
+    __global const Vertex* vertices,
+    write_only image2d_t outBuffer//,
+    //__global float2* minMax
+    )
     {
 
 
@@ -242,6 +245,8 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
 
             Material mat = materials[newHit.matIdx];
 
+
+            float3 matColor = getColor(mat.color.xyz, newHit.uv.xy, mat.proceduralColor);
             
             if (transparencyDecider < mat.trans) {
                 newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
@@ -250,7 +255,7 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
             else {
                 newRay.origin = newHit.position + (newHit.normal * BIAS);
 
-                if (reflectanceDecider < mat.smooth && false) {
+                if (reflectanceDecider < mat.smooth) {
                     newRay.direction = -rotateVector(ray.direction, M_PI_F, newHit.normal);//this is not the correct "rotate"
                 }
                 else {
@@ -285,14 +290,12 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
 
                 float3 F0a = (float3)(fabs((1.0f - mat.ni) / (1.0f + mat.ni)));
                 F0a = F0a * F0a;
-                float3 matC = mat.color.xyz;
 
-                float3 F0 = mix(F0a, matC, mat.metal);
+                float3 F0 = mix(F0a, matColor, mat.metal);
                 // //dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, minRayResult.shape->mat, currentIOR, F0, kS);
                 // //TODO: need to keep the current ray
                 float3 kS;
                 float3 cT = max(CookTorance(ray, newRay, newHit, mat, ior, F0, &kS), 0.0);
-//if(pixelX == 825 && pixelY == 300)
         //blinn phong (ish)
                 //float3 R = rotateVector(newRay.direction, M_PI_F, newHit.normal);//TODO: not the right rotate
                 float3 V = -ray.direction;
@@ -307,28 +310,22 @@ __global const Triangle* triangles, __global const Vertex* vertices) //an array 
                 float3 kD = ((1.0f - kS) * (1.0f - mat.metal));//*diff;
                 
                 accumulated += mat.emission.xyz*masked;
-                masked *= mat.color.xyz;
-                masked*= (diff*kD)+(cT);
-
-                
-
-                
+                masked *= matColor;
+                masked*= (diff*kD)+(cT);  
             }
-            
-            
         }
 
         monteAccum += accumulated;
     }
-    //uint layer;
 
-    //totalRadiance = (float3)(0.5, 0.0, 0.0);
-    //float4 result = {1.0, 0.0, 0.0, 1.0};
-    frameBuffer[pixelIdx] = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
+    float4 result = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
+    //if(pixelX == 300 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
+    write_imagef(outBuffer, (int2) (pixelX, pixelY), result);
     randomBuffer[pixelIdx] = state;
-    //if(pixelX == 300 || pixelY == 200) frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
-    //frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 0.0, 1.0);
 }
+
+
+
 
 
 //slide 25 https://web.engr.oregonstate.edu/~mjb/cs575/Handouts/opencl.2pp.pdf

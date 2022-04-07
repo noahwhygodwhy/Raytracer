@@ -16,17 +16,17 @@ using namespace glm;
 #define MAX_MATERIALS 10
 #define MAX_TRIANGLES 50000
 
-#define MAX_PATH 500
+#define MAX_PATH 100u
 //#define OUTPUTPASSES 50
-//#define OUTPUTFRAMES 189
+#define OUTPUTFRAMES 189
 //#define EVERYFRAME INFINITY
 //#define CONCURRENT_FOR
 //#define KDTRACE
-//#define CIN
+#define CIN
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 1024
+#define MONTE_CARLO_SAMPLES 400
 
 
 //#define BASIC_BITCH
@@ -39,7 +39,8 @@ uint32_t frameY = 1000;
 double frameRatio = double(frameX) / double(frameY);
 
 
-//dvec3 clearColor(0.21, 0.78, 0.95);
+//fvec4 clearColor(0.21, 0.78, 0.95, 1.0);
+
 fvec4 clearColor(0.0, 0.0, 0.0, 1.0);
 
 double deltaTime = 0.0f;	// Time between current frame and last frame
@@ -54,12 +55,6 @@ void frameBufferSizeCallback(GLFWwindow* window, uint64_t width, uint64_t height
 	glViewport(0, 0, GLsizei(width), GLsizei(height));
 }
 
-void clearBuffers() {
-	for (uint64_t i = 0; i < frameX * frameY; i++) {
-		frameBuffer[i] = clearColor;
-		drawBuffer[i] = clearColor;
-	}
-}
 bool frontFacing(vec3 a, vec3 b, vec3 c) {
 	mat3 m(a.x, b.x, c.x, a.y, b.y, c.y, 1.0f, 1.0f, 1.0f);
 	return glm::determinant(m) > 0;
@@ -109,262 +104,6 @@ void saveImage(string filepath, GLFWwindow* w) {
 }
 
 
-/*HitResult shootRay(const Ray& ray, const FrameInfo& fi) {
-
-	HitResult minRayResult;
-	minRayResult.shape = NULL;
-	minRayResult.depth = INFINITY;
-
-#ifdef KDTRACE
-	traverseKDTree(fi.kdTree, ray, minRayResult, fi.currentTime);
-#else
-	rayHitListOfShapes(fi.shapes, ray, minRayResult, fi.currentTime);
-#endif
-	return minRayResult;
-}
-
-dvec3 getRefractionRay(dvec3 hitNormal, dvec3 incidentVector, double objectIOR, bool entering, bool& internalOnly) {
-
-
-	double closeness = glm::dot(hitNormal, incidentVector);
-	double prevIOR = 1.0;
-	double newIOR = objectIOR;
-
-
-	if (!entering) {
-		hitNormal = -hitNormal;
-		swap(prevIOR, newIOR);
-	}
-
-	double cosA1 = glm::dot(incidentVector, hitNormal);
-
-	double sinA1 = glm::sqrt(1.0 - (cosA1 * cosA1));
-
-	double IORRatio = prevIOR / newIOR;
-
-	double sinA2 = sinA1 * IORRatio;
-
-	dvec3 trueReflectDir = incidentVector;
-	if (sinA2 <= -1.0 || sinA2 >= 1.0) {//TODO this isn't handled correctly
-		internalOnly = true;
-		return trueReflectDir;
-	}
-	double maxCloseness = -INFINITY;
-	double k1 = NAN;
-	double k2 = NAN;
-	solveQuadratic(1.0, 2.0*cosA1, 1.0-(1.0/(IORRatio * IORRatio)), k1, k2);
-	if (!isnan(k1)) {
-		dvec3 reflectDir1 = glm::normalize(incidentVector + (k1 * hitNormal));
-		double closeness1 = glm::dot(incidentVector, reflectDir1);
-		if (closeness1 > maxCloseness && closeness1>=0.0) {
-			maxCloseness = closeness1;
-			trueReflectDir = reflectDir1;
-		}
-	}
-	if (!isnan(k2)) {
-		dvec3 reflectDir2 = glm::normalize(incidentVector + (k2 * hitNormal));
-		double closeness2 = glm::dot(incidentVector, reflectDir2);
-		if (closeness2 > maxCloseness && closeness2>=0.0) {
-			maxCloseness = closeness2;
-			trueReflectDir = reflectDir2;
-		}
-	}
-
-	if (maxCloseness <= 0.0) {
-		printf("error calculating refraction angle\n");
-		return incidentVector;
-		//exit(-1);
-	}
-
-	double cosA2 = glm::sqrt(1.0 - (sinA2 * sinA2));
-
-	if (cosA1 < 0.0) {
-		cosA2 *= -1.0;
-	}
-
-	return glm::normalize(trueReflectDir);
-}*/
-
-
-
-
-/*dvec3 lightingFunction(const Ray& originalRay, const Ray& lightRay, const HitResult& minRayResult, const double attenuation, const Material& mat, const dvec3& lightColor) {
-
-	dvec3 lightReflectVector = glm::normalize((glm::dot(lightRay.direction, minRayResult.normal) * 2.0 * minRayResult.normal) - lightRay.direction);
-	dvec3 H = glm::normalize(lightRay.direction + originalRay.inverseDirection);
-
-	double spec = glm::pow(glm::max(0.0, glm::dot(lightReflectVector, originalRay.inverseDirection)), mat.getNS(minRayResult.uv));//to the specular exponent
-	dvec3 specular = (lightColor * spec) / attenuation;
-	double diff = glm::max(0.0, glm::dot(minRayResult.normal, lightRay.direction));
-	dvec3 diffuse = (mat.getColor(minRayResult.uv) * lightColor * diff) / attenuation;
-	return (diffuse + specular);
-}*/
-
-/*dvec3 randomHemisphereVector(double u1, double u2)
-{
-	double r = glm::sqrt(1.0f - u1 * u1);
-	double phi = 2 * glm::pi<double>() * u2;
-
-	return dvec3(cos(phi) * r, sin(phi) * r, u1);
-}*/
-
-/*dvec3 ggx(const Ray& incomingRay,
-	const Ray& outgoingRay,
-	const HitResult&
-	minRayResult,
-	dvec3 downstreamRadiance,
-	Material* mat) {
-
-
-}*/
-
-/*dvec3 pathTrace(const Ray& ray, const FrameInfo& fi, double currentIOR = 1.0, uint32_t layer = 0) {
-	if (prd)printf("\n======================\npath tracing layer %u\n", layer);
-
-	if (layer > MAX_PATH) {
-		return dvec3(clearColor) * 0.1;
-	}
-	HitResult minRayResult = shootRay(ray, fi);
-
-	if (minRayResult.shape == NULL) {
-		return dvec3(clearColor) * 0.1;
-	}
-#ifdef BASIC_BITCH
-	return minRayResult.shape->mat->getColor(minRayResult.uv);
-#endif
-
-	dvec2 uv = minRayResult.uv;
-	Material* mat = minRayResult.shape->mat;
-
-	double trans = mat->getTransparency(uv);
-	double smooth = mat->getSmoothness(uv);
-	double metal = mat->getMetalness(uv);
-
-	double transparencyDecider = randDubTwo();
-	double reflectanceDecider = randDubTwo();
-	double specularDecider = randDubTwo();
-
-
-	dvec3 downstreamRadiance;
-
-
-	double hitAngle = glm::acos(glm::dot(minRayResult.normal, ray.inverseDirection));
-	bool entering = hitAngle < (glm::pi<double>() / 2.0);
-	bool internalOnly;
-
-	dvec3 newRayDir;
-	dvec3 newRayPos;
-
-	if (prd)printf("transD: %f, reflect: %f\n", transparencyDecider, reflectanceDecider);
-
-
-	dvec3 thisRadiance = mat->getEmission();
-	if (thisRadiance == dvec3(0.0, 0.0, 0.0)) {
-
-		if (transparencyDecider < trans) {
-			if (prd)printf("case1\n");
-
-			newRayDir = glm::normalize(getRefractionRay(glm::normalize(minRayResult.normal), glm::normalize(ray.direction), mat->getNI(minRayResult.uv), entering, internalOnly));
-			newRayPos = minRayResult.position + (minRayResult.normal * (entering ? -1.0 : 1.0) * bias);
-
-			Ray reflectionRay(newRayPos, newRayDir);
-
-
-			if (prd)printf("radiance is 0\n");
-
-			thisRadiance = pathTrace(reflectionRay, fi, mat->getNI(uv), layer + 1);
-
-		}
-		else {
-
-			if (reflectanceDecider < smooth) {
-				if (prd)printf("case2\n");
-				newRayDir = -rotate(ray.direction, glm::pi<double>(), (dvec3)minRayResult.normal);
-				newRayPos = minRayResult.position + (minRayResult.normal * bias);
-			}
-			else {
-				if (prd)printf("case3\n");
-				newRayDir = glm::normalize(randomHemisphericalVector(minRayResult.normal));
-				newRayPos = minRayResult.position + (minRayResult.normal * bias);
-			}
-
-		
-
-			if (prd)printf("reflectionRay: %s, %s\n", glm::to_string(newRayPos).c_str(), glm::to_string(newRayDir).c_str());
-
-			Ray reflectionRay(newRayPos, newRayDir);
-
-
-			if(prd)printf("radiance is 0\n");
-		
-			downstreamRadiance = pathTrace(reflectionRay, fi, mat->getNI(uv), layer + 1);
-
-			//thisRadiance += ggx(ray, reflectionRay, minRayResult, downstreamRadiance, mat);
-
-
-			dvec3 kS = dvec3(0);
-
-			dvec3 F0a = dvec3(glm::abs((1.0 - mat->getNI(uv)) / (1.0 + mat->getNI(uv))));
-			F0a = F0a * F0a;
-			dvec3 matC = mat->getColor(uv);
-
-			dvec3 F0 = glm::mix(F0a, matC, metal);
-
-			if(prd)printf("back on layer %u\n", layer);
-			if (prd)printf("F0: %s\n", glm::to_string(F0).c_str());
-
-
-
-
-			//dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, minRayResult.shape->mat, currentIOR, F0, kS);
-			dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, mat, currentIOR, F0, kS);
-
-
-
-
-			if(prd)printf("ks: %f\n", kS);
-
-	//blinn phong (ish)
-			dvec3 R = glm::rotate(newRayDir, glm::pi<double>(), minRayResult.normal);
-			dvec3 V = ray.origin;
-			dvec3 N = minRayResult.normal;
-			dvec3 L = newRayDir;
-
-			dvec3 H = (L + V) / glm::length(L + V);
-
-			double diff = glm::dot(L, N);
-			double spec = glm::dot(N, H);
-
-			//double ks = smooth;
-			dvec3 kD = (1.0 - kS) * (1.0 - metal);;
-
-			dvec3 diffuse = diff * downstreamRadiance * mat->getColor(uv);
-			//dvec3 specular = kS * (pow(spec, mat->getNI(uv))) * downstreamRadiance * mat->getColor(uv);
-
-			//thisRadiance += (downstreamRadiance* mat->getColor(uv));
-
-			thisRadiance += (ctSpecular)+(kD * diffuse);
-		}
-	}
-
-	if (prd)printf("thisradiance: %s\n", glm::to_string(thisRadiance).c_str());
-
-	return thisRadiance;
-}*/
-
-
-
-
-
-
-/*void addModel(vector<Shape*>& shapes, string modelName, dvec3 pos = dvec3(0.0), dvec3 rot = dvec3(0.0, 0.0, 0.0)) {
-	Model m(modelName, pos, rot);
-	shapes.insert(shapes.end(), m.children.begin(), m.children.end());
-}*/
-
-
-
-
 AABB redoAABBs(vector<Sphere>& spheres, vector<Triangle>&triangles, const vector<Vertex>& vertices) {
 
 	AABB toReturn = { fvec4(0.0), fvec4(0.0) };
@@ -395,204 +134,6 @@ AABB redoAABBs(vector<Sphere>& spheres, vector<Triangle>&triangles, const vector
 int main()
 {
 
-
-	cl_uint numPlatforms;
-	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
-	if (status != CL_SUCCESS)
-		fprintf(stderr, "clGetPlatformIDs failed (1)\n");
-	printf("Number of Platforms = %d\n", numPlatforms);
-	cl_platform_id* platforms = new cl_platform_id[numPlatforms];
-	status = clGetPlatformIDs(numPlatforms, platforms, NULL);
-	if (status != CL_SUCCESS)
-		fprintf(stderr, "clGetPlatformIDs failed (2)\n");
-	cl_uint numDevices;
-	cl_device_id* devices;
-
-
-
-	int i = 0;
-	
-	printf("Platform #%d:\n", i);
-	size_t size;
-	char* str;
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, NULL, &size);
-	str = new char[size];
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, size, str, NULL);
-	printf("\tName = '%s'\n", str);
-	delete[] str;
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, NULL, &size);
-	str = new char[size];
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, size, str, NULL);
-	printf("\tVendor = '%s'\n", str);
-	delete[] str;
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 0, NULL, &size);
-	str = new char[size];
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, size, str, NULL);
-	printf("\tVersion = '%s'\n", str);
-	delete[] str;
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, 0, NULL, &size);
-	str = new char[size];
-	clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, size, str, NULL);
-	printf("\tProfile = '%s'\n", str);
-	delete[] str;
-	// find out how many devices are attached to each platform and get their ids:
-	status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
-	if (status != CL_SUCCESS)
-		fprintf(stderr, "clGetDeviceIDs failed (2)\n");
-	devices = new cl_device_id[numDevices];
-	status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
-	if (status != CL_SUCCESS)
-		fprintf(stderr, "clGetDeviceIDs failed (2)\n");
-	int j = 0;
-	printf("\tDevice #%d:\n", j);
-	//size_t size;
-	cl_device_type type;
-	cl_uint ui;
-	size_t sizes[3] = { 0, 0, 0 };
-	clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
-	printf("\t\tType = 0x%04x = ", type);
-	switch (type)
-	{
-	case CL_DEVICE_TYPE_CPU:
-		printf("CL_DEVICE_TYPE_CPU\n");
-		break;
-	case CL_DEVICE_TYPE_GPU:
-		printf("CL_DEVICE_TYPE_GPU\n");
-		break;
-	case CL_DEVICE_TYPE_ACCELERATOR:
-		printf("CL_DEVICE_TYPE_ACCELERATOR\n");
-		break;
-	default:
-		printf("Other...\n");
-		break;
-	}
-	clGetDeviceInfo(devices[j], CL_DEVICE_VENDOR_ID, sizeof(ui), &ui, NULL);
-	printf("\t\tDevice Vendor ID = 0x%04x\n", ui);
-	clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ui), &ui, NULL);
-	printf("\t\tDevice Maximum Compute Units = %d\n", ui);
-	clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(ui), &ui, NULL);
-	printf("\t\tDevice Maximum Work Item Dimensions = %d\n", ui);
-	clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(sizes), sizes, NULL);
-	printf("\t\tDevice Maximum Work Item Sizes = %d x %d x %d\n", sizes[0], sizes[1], sizes[2]);
-	clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size), &size, NULL);
-	printf("\t\tDevice Maximum Work Group Size = %d\n", size);
-	clGetDeviceInfo(devices[j], CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(ui), &ui, NULL);
-	printf("\t\tDevice Maximum Clock Frequency = %d MHz\n", ui);
-
-	clGetDeviceInfo(devices[j], CL_DEVICE_ADDRESS_BITS, sizeof(ui), &ui, NULL);
-	printf("\t\tDevice Address Bits = %d\n", ui);
-
-	size_t extensionSize;
-	clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, 0, NULL, &extensionSize);
-	char* extensions = new char[extensionSize];
-	clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, extensionSize, extensions, NULL);
-	fprintf(stderr, "\nDevice Extensions:\n");
-	for (int i = 0; i < (int)strlen(extensions); i++)
-	{
-		if (extensions[i] == ' ')
-			extensions[i] = '\n';
-	}
-	fprintf(stderr, "%s\n", extensions);
-	delete[] extensions;
-		
-	
-
-	cl_device_id device = devices[0];
-
-	cl_gl_context_info;
-
-	cl_int glContext = clGetGLContextInfoKHR(NULL, CL_DEVICES_FOR_GL_CONTEXT_KHR)
-
-	cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
-	//CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
-
-	cl_command_queue_properties* qProperties =new cl_command_queue_properties();
-
-	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
-
-	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
-	cl_mem clSpheres = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Sphere) * MAX_SPHERES, NULL, &status);
-	cl_mem clMaterials = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Material) * MAX_MATERIALS, NULL, &status);
-
-	cl_mem clTriangles = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Triangle) * MAX_TRIANGLES, NULL, &status);
-	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_TRIANGLES*3, NULL, &status);
-
-	cl_image_format imgFormat =  {CL_sRGBA, CL_FLOAT} ;
-	cl_mem clImage = clCreateImage2D(context, CL_MEM_READ_ONLY, &imgFormat, frameX, frameY, NULL, NULL, &status);
-
-
-	GLuint FBO;
-	glGenFramebuffers(1, &FBO);
-
-	cl_mem clFrameBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, frameX * frameY * sizeof(frameBuffer[0]), FBO, &status);
-
-	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
-
-	long unsigned int length;
-	ifstream stream("Renderer.cl", ios::in | ios::ate | ios::binary);
-	//stream.seekg(0, ios::end);
-	length = long unsigned int(stream.tellg());
-	stream.seekg(0, ios::beg);
-	char* shaderSource = new char[length + 1];
-	shaderSource[length] = '\0';
-	const char** shaderSourcesArray = new const char* [1];
-	stream.read(shaderSource, length);
-	//printf("shader source: %s\n", shaderSource);
-
-	shaderSourcesArray[0] = shaderSource;
-
-	cl_program program = clCreateProgramWithSource(context, 1, shaderSourcesArray, NULL, &status);
-
-	const char* options = { "-cl-single-precision-constant" };
-	status = clBuildProgram(program, 1, &device, options, NULL, NULL);
-	printf("build program %i\n", status);
-	if (status != CL_SUCCESS)
-	{ // retrieve and print the error messages:
-		size_t size;
-		clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &size);
-		cl_char* log = new cl_char[size];
-		clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, size, log, NULL);
-		printf("clBuildProgram failed:\n%s\n", log);
-		exit(-1);
-	}
-
-	cl_kernel kernel = clCreateKernel(program, "render", &status );
-	printf("made kernal %i\n", status);
-
-	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
-	printf("set args 0 %i\n", status);
-	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clSpheres);
-	printf("set args 1 %i\n", status);
-	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clMaterials);
-	printf("set args 2 %i\n", status);
-	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clFrameBuffer);
-	printf("set args 3 %i\n", status);
-	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
-	printf("set args 4 %i\n", status);
-	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clTriangles);
-	printf("set args 4 %i\n", status);
-	status = clSetKernelArg(kernel, 6, sizeof(cl_mem), &clVerts);
-	printf("set args 4 %i\n", status);
-
-
-
-
-	//v this is the number of items to do, so like framex and framey?
-	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
-
-	//values in this must be divisible by values in local work size
-	//cannot be values larger than an unsigned in contained in a number of bits queried by CL_DEVICE_ADDRESS_BITS
-	size_t globalWorkSize[3] = { frameX, frameY, 1 };
-
-	//this is describing how wide the processing can be, so we set it to max the gpu can do
-	//size_t localWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
-
-
-	//must be a 3d array volume < CL_DEVICE_MAX_WORK_GROUP_SIZE (in our case 1024)
-	//and each side must be less than the coresponding size in CL_DEVICE_MAX_WORK_ITEM_SIZES (1024x1024x64)
-	size_t localWorkSize[3] = { NULL, NULL, NULL };
-	
-
 	srand(0u);
 
 	glfwInit();
@@ -611,6 +152,7 @@ int main()
 		exit(-1);
 	}
 	glfwMakeContextCurrent(window);
+	
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -620,6 +162,8 @@ int main()
 	frameBufferSizeCallback(window, frameX, frameY);
 
 	glEnable(GL_FRAMEBUFFER_SRGB);
+
+
 	unsigned int VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -627,13 +171,149 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
 
+	cl_uint numPlatforms;
+	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetPlatformIDs failed (1)\n");
+	//printf("Number of Platforms = %d\n", numPlatforms);
+	cl_platform_id* platforms = new cl_platform_id[numPlatforms];
+	status = clGetPlatformIDs(numPlatforms, platforms, NULL);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetPlatformIDs failed (2)\n");
+	cl_uint numDevices;
+	cl_device_id* devices;
+
+
+
+	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+
+	devices = new cl_device_id[numDevices];
+	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+
+	cl_device_type type;
+	size_t sizes[3] = { 0, 0, 0 };
+	clGetDeviceInfo(devices[0], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
+	
+	cl_device_id device = devices[0];
+
+
+	char* ui;
+	size_t valueSize;
+	clGetDeviceInfo(device, CL_DEVICE_VERSION, sizeof(ui), &ui, NULL);
+
+	clGetDeviceInfo(device, CL_DEVICE_VERSION, 0, NULL, &valueSize);
+	ui = (char*)malloc(valueSize);
+	clGetDeviceInfo(device, CL_DEVICE_VERSION, valueSize, ui, NULL);
+	printf(" %d.%d Hardware version: %s\n", 1, 1, ui);
+	free(ui);
+
+	//printf("%c\n", ui);
+	//exit(0);
+
+
+
+	cl_context_properties properties[] = {
+		CL_GL_CONTEXT_KHR, (cl_context_properties)glfwGetWGLContext(window),
+		CL_WGL_HDC_KHR, (cl_context_properties)GetDC(glfwGetWin32Window(window)),
+		CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[0],
+	0};
+
+	cl_context context = clCreateContext(properties, 1, &device, NULL, NULL, &status);
+	cl_command_queue_properties* qProperties = new cl_command_queue_properties();
+
+	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
+
+	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
+	cl_mem clSpheres = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Sphere) * MAX_SPHERES, NULL, &status);
+	cl_mem clMaterials = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Material) * MAX_MATERIALS, NULL, &status);
+
+	cl_mem clTriangles = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Triangle) * MAX_TRIANGLES, NULL, &status);
+	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_TRIANGLES * 3, NULL, &status);
+
+	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
+
+
+
+	unsigned int frameTexture;
+	glGenTextures(1, &frameTexture);
+	glBindTexture(GL_TEXTURE_2D, frameTexture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, NULL);
+
+	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, frameTexture, &status);
+	//printf("cltesttexture status: %i\n", status);
+
+
+
+	long unsigned int length;
+	ifstream stream("Renderer.cl", ios::in | ios::ate | ios::binary);
+	//stream.seekg(0, ios::end);
+	length = long unsigned int(stream.tellg());
+	stream.seekg(0, ios::beg);
+	char* shaderSource = new char[length + 1];
+	shaderSource[length] = '\0';
+	const char** shaderSourcesArray = new const char* [1];
+	stream.read(shaderSource, length);
+
+	shaderSourcesArray[0] = shaderSource;
+
+	cl_program program = clCreateProgramWithSource(context, 1, shaderSourcesArray, NULL, &status);
+
+	const char* options = { "-cl-single-precision-constant" };
+	status = clBuildProgram(program, 1, &device, options, NULL, NULL);
+
+	if (status != CL_SUCCESS)
+	{ // retrieve and print the error messages:
+		size_t size;
+
+		clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &size);
+		cl_char* log = new cl_char[size];
+		clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, size, log, NULL);
+		printf("clBuildProgram failed:\n%s\n", log);
+		exit(-1);
+	}
+
+	cl_kernel kernel = clCreateKernel(program, "render", &status);
+
+	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
+	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clSpheres);
+	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clMaterials);
+	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clRandomBuffer);
+	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clTriangles);
+	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clVerts);
+	status = clSetKernelArg(kernel, 6, sizeof(cl_mem), &clFrameTexture);
+
+
+
+
+	//v this is the number of items to do, so like framex and framey?
+	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
+
+	//values in this must be divisible by values in local work size
+	//cannot be values larger than an unsigned in contained in a number of bits queried by CL_DEVICE_ADDRESS_BITS
+	size_t globalWorkSize[3] = { frameX, frameY, 1 };
+
+	//this is describing how wide the processing can be, so we set it to max the gpu can do
+	//size_t localWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
+
+
+	//must be a 3d array volume < CL_DEVICE_MAX_WORK_GROUP_SIZE (in our case 1024)
+	//and each side must be less than the coresponding size in CL_DEVICE_MAX_WORK_ITEM_SIZES (1024x1024x64)
+	size_t localWorkSize[3] = { NULL, NULL, NULL };
+
+
+
+
+
+
+
 	Shader shader("vert.glsl", "frag.glsl");
 	shader.use();
 
-	//make framebuffers
 
-	frameBuffer = new fvec4[frameX * frameY]();
-	drawBuffer = new fvec4[frameX * frameY]();
 
 
 	mt19937_64 numGen;
@@ -645,41 +325,26 @@ int main()
 	//exit(0);
 	
 
-	//initialize textured that the framebuffer gets written to display it on a triangle
-	unsigned int frameTexture;
-	glGenTextures(1, &frameTexture);
-	glBindTexture(GL_TEXTURE_2D, frameTexture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//basic bitch white
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f)); //red light
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//another basic bitch white
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f)); //blue light
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//white light
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54f, 0.9f, 0.0f, 0.0f));//transparenty
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f));//mirrorA
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 0.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f));//yellow
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 2u, 0u));//checkers
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54, 0.95f, 0.0f, 0.0f, 0u, 0u));//transparenty
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f, 0u, 0u));//mirrorA
 
 
 	vector<Sphere> spheres;
 	spheres.reserve(MAX_SPHERES);
-	spheres.push_back(Sphere(fvec4(5.0f, 6.0f, 3.0f, 0.0f), Shape(AABB(), 4u, 0), 1.0f));
-	spheres.push_back(Sphere(fvec4(-5.0f, 6.0f, 3.0f, 0.0f), Shape(AABB(), 4u, 0), 1.0f));
-	spheres.push_back(Sphere(fvec4(3.0f, 2.0f, -3.0f, 0.0f), Shape(AABB(), 7u, 0), 2.0f));
-	spheres.push_back(Sphere(fvec4(-3.0f, 2.0f, -3.0f, 0.0f), Shape(AABB(), 6u, 0), 2.0f));
-	spheres.push_back(Sphere(fvec4(0.0f, 2.0f, 5.0f, 0.0f), Shape(AABB(), 5u, 0), 2.0f));
+	spheres.push_back(Sphere(fvec4(0.0f, 20.0f, 20.0f, 0.0f), Shape(AABB(), 1u, 0), 5.0));//light
+
+	spheres.push_back(Sphere(fvec4(3.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 3u, 0), 3.0f));//transparent
+	spheres.push_back(Sphere(fvec4(0.0f, 5.0f, 5.0f, 0.0f), Shape(AABB(), 2u, 0), 3.0f));//mirror
 
 
-	//spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 0u), 3.0f));
-	//spheres.push_back(Sphere(fvec4(0.0f, -1000.0f, 0.0f, 0.0f), Shape(AABB(), 2u), 1000.0f));
-	//spheres.push_back(Sphere(fvec4(6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 1u), 1.0f));
-	//spheres.push_back(Sphere(fvec4(-6.0f, 6.0f, 6.0f, 0.0f), Shape(AABB(), 3u), 1.0f));
+
+
 
 	vector<Triangle> triangles;
 	triangles.reserve(MAX_TRIANGLES);
@@ -687,16 +352,21 @@ int main()
 	vector<Vertex> vertices;
 	vertices.reserve(MAX_TRIANGLES * 3);
 
-	vertices.push_back(Vertex(fvec4(-50, 0, -50, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(50, 0, -50, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(50, 0, 50, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
-	vertices.push_back(Vertex(fvec4(-50, 0, 50, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
+	/*
+	vertices.push_back(Vertex(fvec4(-10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(10, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-10, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));*/
+
+	vertices.push_back(Vertex(fvec4(-5, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(15, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(15, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-5, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
 
 	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
 	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 1));
 
 
-	//TODO: add triangles here
 
 
 
@@ -713,17 +383,14 @@ int main()
 	AABB sceneBounding = redoAABBs(spheres, triangles, vertices);
 
 	status = clEnqueueWriteBuffer(cmdQueue, clSpheres, CL_FALSE, 0, sizeof(Shape) * MAX_SPHERES, spheres.data(), 0, NULL, &waitAfterWrites[0]);
-	printf("write1 %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_TRIANGLES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
-	printf("write2 %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
-	printf("write3 %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clTriangles, CL_FALSE, 0, sizeof(Triangle) * MAX_TRIANGLES, triangles.data(), 0, NULL, &waitAfterWrites[3]);
-	printf("write4 %i\n", status);
 	cl_event* waitAfterFinalWrite = new cl_event;
 	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 4, waitAfterWrites, waitAfterFinalWrite);
-	printf("write5 %i\n", status);
 
+	cl_event* otherDataEvent = new cl_event;
+	cl_event* waitAfterProcessing = new cl_event;
 
 #if defined(OUTPUTFRAMES)|| defined(OUTPUTPASSES)
 
@@ -767,7 +434,7 @@ int main()
 
 		//currentTime = currentFrame;
 		deltaTime = currentFrame - lastFrame;
-		//printf("that frame took %f seconds\n", deltaTime);
+		printf("that frame took %f seconds\n", deltaTime);
 		lastFrame = currentFrame;
 
 		if (int(currentFrame) > lastSecondFrameCount) {
@@ -784,87 +451,39 @@ int main()
 
 
 
-		//printf("scene bounding min: %s, max:%s\n", glm::to_string(sceneBounding.min).c_str(), glm::to_string(sceneBounding.max).c_str());
-		//fi.kdTree = buildKDTree(fi.shapes, sceneBounding);
-
 		constexpr double mypi = glm::pi<double>();
-		clearBuffers();
 
 
-		//fvec3 eye = fvec3(sin(currentFrame) * 15, 7, cos(currentFrame) * 15);
+		fvec3 eye = fvec3(sin(currentFrame) * 16, 4, cos(currentFrame) * 16);
 
-		fvec3 eye = fvec3(0.0f, 7.0f, 15.0f);
-
+		//fvec3 eye = fvec3(0.0f, 4.0f, 16.0f);
 		fvec3 lookat = fvec3(0.0, 3.0, 0.0);
-		//lookat = vec3(0.0, -5.0, 15);
 
-		//printf("looking at %s\n", glm::to_string(lookat).c_str());
 		fvec3 camForward = glm::normalize(lookat - eye);
 		fvec3 camUp = glm::normalize(fvec3(0.0, 1, 0.0));
 		fvec3 camRight = glm::cross(camForward, camUp);
 		camUp = glm::cross(camRight, camForward);
 
-		//fi.camPosition = eye;
-
-
 		float viewPortHeight = 2.0f;
 		float viewPortWidth = viewPortHeight * frameRatio;
 
-		float fov = 90;
+		float fov = 120;
 		float focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
-		//qua rotQuat = glm::rotation(dvec3(0.0, 0.0, -1.0), camForward);
-		
+
+
 		sceneBounding = redoAABBs(spheres, triangles, vertices);
+		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), 0, focal, currentFrame, MAX_PATH, uint(spheres.size()), uint(triangles.size()), MONTE_CARLO_SAMPLES};
 
-
-		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), 0, focal, currentFrame, 100u, uint(spheres.size()), uint(triangles.size()), MONTE_CARLO_SAMPLES};
-
-
-		cl_event* otherDataEvent = new cl_event;
 		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 1, waitAfterFinalWrite, otherDataEvent);
-		printf("enqueue clOtherData %i\n", status);
-
-
-		cl_event* waitAfterProcessing = new cl_event;
 		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 1, otherDataEvent, waitAfterProcessing);
-		printf("enqueue range kernal %i\n", status);
-		
-
-
-		status = clEnqueueReadBuffer(cmdQueue, clFrameBuffer, CL_TRUE, 0, frameX * frameY * sizeof(frameBuffer[0]), frameBuffer, 1, waitAfterProcessing, NULL);
-		printf("enqueue read %i\n", status);
-
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, frameBuffer);
-
-
-		//glBindFramebuffer(GL_READ_FRAMEBUFFER, clFrameBuffer);
-		//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		//glBlitFramebuffer(0, 0, frameX, frameY, 0, 0, frameX, frameY, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-
-
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
-		glfwSwapBuffers(window);
-		processInput(window);
-		glfwPollEvents();
-
-		/*
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, frameBuffer);
-
-
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
 		processInput(window);
 		glfwPollEvents();
-*/
 
-
-
-
-
+		
 
 #ifdef OUTPUTFRAMES
 		saveImage((std::to_string(frameCounter) + ".png"), window);

@@ -35,6 +35,8 @@ enum shapeType {
         float trans;
         float metal;
         float smooth;
+        uint proceduralColor;
+        uint volumetricColor;
     }  Material;
 
     typedef struct alignas(16) AABB {
@@ -121,6 +123,8 @@ enum shapeType {
         float trans;
         float metal;
         float smooth;
+        uint proceduralColor;
+        uint volumetricColor;
     } Material;
 
 
