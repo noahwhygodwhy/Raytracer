@@ -10,7 +10,7 @@
 
 
 
-#define VOLUME_SAMPLE_DISTANCE 0.2f
+#define VOLUME_SAMPLE_DISTANCE 0.1f
 
 #define BIAS 1e-3f
 
@@ -123,6 +123,9 @@ float3 getRefractionRay(float3 hitNormal, float3 incidentVector, float objectIOR
 }
 
 
+float3 randomSphericalVector(ulong* state){
+    return normalize((float3)(randDubThree(state), randDubThree(state), randDubThree(state)));
+}
 //TODO: this might not be an ok way of sampling hemisphere vectors
 float3 randomHemisphericalVector(float3 normal, ulong* state) {
 
@@ -220,11 +223,11 @@ __kernel void render(
 
         float3 accumulated = (float3)(0.0f);
         float3 masked = (float3)(1.0f);
+        bool insideFog = false;
         for(uint layer = 0; layer < otherData->maxDepth; layer++) {
 
             ray = newRay;
             newHit = shootRay(ray, spheres, otherData->numberOfSpheres, triangles, vertices, otherData->numberOfTriangles);
-            
             
             //hit needsmat idx not shape idx
             if(!newHit.hit){
@@ -252,17 +255,31 @@ __kernel void render(
 
             float3 matColor = getColor(mat.color.xyz, newHit.uv.xy, mat.proceduralColor);
 
-            if(mat.volumetricColor > 0u){
-                if(entering){
-                    newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
+            if(mat.volumetricColor > 0u || insideFog){
+                if(entering && !insideFog){
+                    insideFog = true;
+                    //if(pixelX == 500 && pixelY == 500) printf("entering\n");
+                    newRay.origin = newHit.position + (-newHit.normal * BIAS);
                     newRay.direction = ray.direction;
                 } else {
-                    for(float stepper = 0; stepper < newHit.depth; stepper+=VOLUME_SAMPLE_DISTANCE){
+                    
+                    newRay.origin = newHit.position + (newHit.normal * BIAS);
+                    newRay.direction = ray.direction;
+                    //if(pixelX == 500 && pixelY == 500) printf("exiting, going to depth %f\n", newHit.depth);
+
+                    for(float stepper = 0.0f; stepper < newHit.depth; stepper+=VOLUME_SAMPLE_DISTANCE){
+
                         float scatterDecider = rand(&state);
+                        //if(pixelX == 500 && pixelY == 500)printf("stepper: %f, colorw: %f, scatterDecider: %f\n", stepper, mat.color.w, scatterDecider);
+                        
                         if(scatterDecider < mat.color.w) {
-                            
+                            //if(pixelX == 500 && pixelY == 500)printf("scattering\n");
+                            newRay.origin = ray.origin+(ray.direction*stepper) + (newHit.normal * BIAS);
+                            newRay.direction = randomSphericalVector(&state);
+                            break;
                         }
                     }
+                    insideFog = false;
                 }
 
             }
@@ -337,7 +354,7 @@ __kernel void render(
     }
 
     float4 result = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
-    //if(pixelX == 300 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
+    if(pixelX == 500 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
     write_imagef(outBuffer, (int2) (pixelX, pixelY), result);
     randomBuffer[pixelIdx] = state;
 }

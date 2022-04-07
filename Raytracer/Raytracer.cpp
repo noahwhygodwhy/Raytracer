@@ -18,7 +18,7 @@ using namespace glm;
 
 #define MAX_PATH 100u
 //#define OUTPUTPASSES 50
-#define OUTPUTFRAMES 189
+//#define OUTPUTFRAMES 189
 //#define EVERYFRAME INFINITY
 //#define CONCURRENT_FOR
 //#define KDTRACE
@@ -26,7 +26,7 @@ using namespace glm;
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 400
+#define MONTE_CARLO_SAMPLES 10000
 
 
 //#define BASIC_BITCH
@@ -330,19 +330,23 @@ int main()
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 2u, 0u));//checkers
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(1.0f, 1.0f, 1.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.6f, 0.6f, 0.6f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54, 0.95f, 0.0f, 0.0f, 0u, 0u));//transparenty
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f, 0u, 0u));//mirrorA
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.05f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red light
 
 
 	vector<Sphere> spheres;
 	spheres.reserve(MAX_SPHERES);
+
 	spheres.push_back(Sphere(fvec4(0.0f, 20.0f, 20.0f, 0.0f), Shape(AABB(), 1u, 0), 5.0));//light
 
-	spheres.push_back(Sphere(fvec4(3.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 3u, 0), 3.0f));//transparent
-	spheres.push_back(Sphere(fvec4(0.0f, 5.0f, 5.0f, 0.0f), Shape(AABB(), 2u, 0), 3.0f));//mirror
+	//spheres.push_back(Sphere(fvec4(3.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 3u, 0), 3.0f));//transparent
+	//spheres.push_back(Sphere(fvec4(0.0f, 5.0f, 5.0f, 0.0f), Shape(AABB(), 2u, 0), 3.0f));//mirror
 
+	spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 3.0f));//foggy sphere
+	spheres.push_back(Sphere(fvec4(3.6f, 1.5f, 0.0f, 0.0f), Shape(AABB(), 5u, 0), 0.5f));//red light
 
 
 
@@ -455,9 +459,9 @@ int main()
 		constexpr double mypi = glm::pi<double>();
 
 
-		fvec3 eye = fvec3(sin(currentFrame) * 16, 4, cos(currentFrame) * 16);
+		//fvec3 eye = fvec3(sin(currentFrame) * 16, 4, cos(currentFrame) * 16);
 
-		//fvec3 eye = fvec3(0.0f, 4.0f, 16.0f);
+		fvec3 eye = fvec3(0.0f, 5.0f, 6.0f);
 		fvec3 lookat = fvec3(0.0, 3.0, 0.0);
 
 		fvec3 camForward = glm::normalize(lookat - eye);
@@ -497,6 +501,7 @@ int main()
 	}
 	//pool.stop();
 	std::printf("closing\n");
+	
 	glfwTerminate();
 }
 
