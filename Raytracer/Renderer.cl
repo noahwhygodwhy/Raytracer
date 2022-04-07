@@ -8,6 +8,10 @@
 #include "material.cl"
 
 
+
+
+#define VOLUME_SAMPLE_DISTANCE 0.2f
+
 #define BIAS 1e-3f
 
 HitResult rayHitListOfShapes(const Ray ray, 
@@ -247,8 +251,22 @@ __kernel void render(
 
 
             float3 matColor = getColor(mat.color.xyz, newHit.uv.xy, mat.proceduralColor);
-            
-            if (transparencyDecider < mat.trans) {
+
+            if(mat.volumetricColor > 0u){
+                if(entering){
+                    newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
+                    newRay.direction = ray.direction;
+                } else {
+                    for(float stepper = 0; stepper < newHit.depth; stepper+=VOLUME_SAMPLE_DISTANCE){
+                        float scatterDecider = rand(&state);
+                        if(scatterDecider < mat.color.w) {
+                            
+                        }
+                    }
+                }
+
+            }
+            else if (transparencyDecider < mat.trans) {
                 newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
                 newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
             }
