@@ -160,6 +160,8 @@ __kernel void render(
     )
     {
 
+    printf("ha");
+    return;
 
     int frameX = get_global_size(0);
     int frameY = get_global_size(1);
@@ -348,7 +350,7 @@ __kernel void render(
 
         monteAccum += accumulated;
     }
-
+    printf("on pixel %i\n", pixelIdx);
     float4 result = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
     if(pixelX == 500 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
     write_imagef(outBuffer, (int2) (pixelX, pixelY), result);

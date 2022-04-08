@@ -143,6 +143,124 @@ UShape makeTriangle(uint a, uint b, uint c, uint materialIdx) {
 	return UShape(fvec4(a, b, c, 0), AABB(), materialIdx, 1u);
 }
 
+
+
+
+
+
+
+
+void nothing() {
+	cl_uint numPlatforms;
+	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetPlatformIDs failed (1)\n");
+	printf("Number of Platforms = %d\n", numPlatforms);
+	cl_platform_id* platforms = new cl_platform_id[numPlatforms];
+	status = clGetPlatformIDs(numPlatforms, platforms, NULL);
+	if (status != CL_SUCCESS)
+		fprintf(stderr, "clGetPlatformIDs failed (2)\n");
+	cl_uint numDevices;
+	cl_device_id* devices;
+
+
+
+	printf("num platforms: %u\n", numPlatforms);
+	int i = 0;
+	for (int i = 0; i < numPlatforms; i++) {
+
+
+		printf("Platform #%d:\n", i);
+		size_t size;
+		char* str;
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, NULL, &size);
+		str = new char[size];
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, size, str, NULL);
+		printf("\tName = '%s'\n", str);
+		delete[] str;
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, NULL, &size);
+		str = new char[size];
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, size, str, NULL);
+		printf("\tVendor = '%s'\n", str);
+		delete[] str;
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 0, NULL, &size);
+		str = new char[size];
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, size, str, NULL);
+		printf("\tVersion = '%s'\n", str);
+		delete[] str;
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, 0, NULL, &size);
+		str = new char[size];
+		clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, size, str, NULL);
+		printf("\tProfile = '%s'\n", str);
+		delete[] str;
+		// find out how many devices are attached to each platform and get their ids:
+		status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+		if (status != CL_SUCCESS)
+			fprintf(stderr, "clGetDeviceIDs failed (2)\n");
+		printf("num devices: %u\n", numDevices);
+		devices = new cl_device_id[numDevices];
+		status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+		if (status != CL_SUCCESS)
+			fprintf(stderr, "clGetDeviceIDs failed (2)\n");
+		for (int j = 0; j < numDevices; j++) {
+		
+			printf("\tDevice #%d:\n", j);
+			//size_t size;
+			cl_device_type type;
+			cl_uint ui;
+			size_t sizes[3] = { 0, 0, 0 };
+			clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
+			printf("\t\tType = 0x%04x = ", type);
+			switch (type)
+			{
+			case CL_DEVICE_TYPE_CPU:
+				printf("CL_DEVICE_TYPE_CPU\n");
+				break;
+			case CL_DEVICE_TYPE_GPU:
+				printf("CL_DEVICE_TYPE_GPU\n");
+				break;
+			case CL_DEVICE_TYPE_ACCELERATOR:
+				printf("CL_DEVICE_TYPE_ACCELERATOR\n");
+				break;
+			default:
+				printf("Other...\n");
+				break;
+			}
+			clGetDeviceInfo(devices[j], CL_DEVICE_VENDOR_ID, sizeof(ui), &ui, NULL);
+			printf("\t\tDevice Vendor ID = 0x%04x\n", ui);
+			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ui), &ui, NULL);
+			printf("\t\tDevice Maximum Compute Units = %d\n", ui);
+			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(ui), &ui, NULL);
+			printf("\t\tDevice Maximum Work Item Dimensions = %d\n", ui);
+			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(sizes), sizes, NULL);
+			printf("\t\tDevice Maximum Work Item Sizes = %d x %d x %d\n", sizes[0], sizes[1], sizes[2]);
+			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size), &size, NULL);
+			printf("\t\tDevice Maximum Work Group Size = %d\n", size);
+			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(ui), &ui, NULL);
+			printf("\t\tDevice Maximum Clock Frequency = %d MHz\n", ui);
+
+			clGetDeviceInfo(devices[j], CL_DEVICE_ADDRESS_BITS, sizeof(ui), &ui, NULL);
+			printf("\t\tDevice Address Bits = %d\n", ui);
+
+			size_t extensionSize;
+			clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, 0, NULL, &extensionSize);
+			char* extensions = new char[extensionSize];
+			clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, extensionSize, extensions, NULL);
+			fprintf(stderr, "\nDevice Extensions:\n");
+			for (int i = 0; i < (int)strlen(extensions); i++)
+			{
+				if (extensions[i] == ' ')
+					extensions[i] = '\n';
+			}
+			fprintf(stderr, "%s\n", extensions);
+			delete[] extensions;
+		}
+	}
+}
+
+
+
+
 int main()
 {
 
@@ -195,12 +313,12 @@ int main()
 	cl_uint numDevices;
 	cl_device_id* devices;
 
+	
 
-
-	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
 
 	devices = new cl_device_id[numDevices];
-	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
 
 	cl_device_type type;
 	size_t sizes[3] = { 0, 0, 0 };
@@ -231,14 +349,21 @@ int main()
 	0};
 
 	cl_context context = clCreateContext(properties, 1, &device, NULL, NULL, &status);
+	printf("context status: %i\n", status);
 	cl_command_queue_properties* qProperties = new cl_command_queue_properties();
 	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
+	printf("cmdqueue status: %i\n", status);
 
 	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
+	printf("create buffer 0 status: %i\n", status);
 	cl_mem clShapes = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(UShape) * MAX_SHAPES, NULL, &status);
+	printf("create buffer 1 status: %i\n", status);
 	cl_mem clMaterials = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Material) * MAX_MATERIALS, NULL, &status);
+	printf("create buffer 2 status: %i\n", status);
 	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_SHAPES * 3, NULL, &status);
+	printf("create buffer 3 status: %i\n", status);
 	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
+	printf("create buffer 4 status: %i\n", status);
 
 	unsigned int frameTexture;
 	glGenTextures(1, &frameTexture);
@@ -250,6 +375,7 @@ int main()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, NULL);
 
 	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, frameTexture, &status);
+	printf("create buffer 5 status: %i\n", status);
 	//printf("cltesttexture status: %i\n", status);
 
 
@@ -283,13 +409,20 @@ int main()
 	}
 
 	cl_kernel kernel = clCreateKernel(program, "render", &status);
+	printf("kernal status: %i\n", status);
 
 	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
+	printf("set arg 0 status: %i\n", status);
 	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clShapes);
+	printf("set arg 1 status: %i\n", status);
 	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clVerts);
+	printf("set arg 2 status: %i\n", status);
 	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clMaterials);
+	printf("set arg 3 status: %i\n", status);
 	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	printf("set arg 4 status: %i\n", status);
 	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg 5 status: %i\n", status);
 
 	//v this is the number of items to do, so like framex and framey?
 	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
@@ -346,26 +479,12 @@ int main()
 
 	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//smal
 
-	//spheres.push_back(Sphere(fvec4(3.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 3u, 0), 3.0f));//transparent
-	//spheres.push_back(Sphere(fvec4(0.0f, 5.0f, 5.0f, 0.0f), Shape(AABB(), 2u, 0), 3.0f));//mirror
-
-	//spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 3.0f));//foggy sphere
-	//spheres.push_back(Sphere(fvec4(3.6f, 1.5f, 0.0f, 0.0f), Shape(AABB(), 5u, 0), 0.5f));//red light
 
 
-
-
-	//vector<Triangle> triangles;
-	//triangles.reserve(MAX_TRIANGLES);
 
 	vector<Vertex> vertices;
 	vertices.reserve(MAX_SHAPES * 3);
 
-	/*
-	vertices.push_back(Vertex(fvec4(-10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(10, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
-	vertices.push_back(Vertex(fvec4(-10, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));*/
 
 	vertices.push_back(Vertex(fvec4(-5, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
 	vertices.push_back(Vertex(fvec4(15, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
@@ -374,12 +493,6 @@ int main()
 
 	shapes.push_back(makeTriangle(0, 3, 2, 0u));
 	shapes.push_back(makeTriangle(0, 2, 1, 0u));
-
-	//triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
-	//triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 1));
-
-
-
 
 
 
@@ -398,10 +511,15 @@ int main()
 
 
 	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
+	printf("write 0 status: %i\n", status);
+
 	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_SHAPES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
+	printf("write 1 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
+	printf("write 2 status: %i\n", status);
 	cl_event* waitAfterFinalWrite = new cl_event;
 	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 3, waitAfterWrites, waitAfterFinalWrite);
+	printf("write 3 status: %i\n", status);
 
 	cl_event* otherDataEvent = new cl_event;
 	cl_event* waitAfterProcessing = new cl_event;
@@ -500,7 +618,9 @@ int main()
 		};
 
 		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 1, waitAfterFinalWrite, otherDataEvent);
+		printf("write 5 status: %i\n", status);
 		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 1, otherDataEvent, waitAfterProcessing);
+		printf("range kernel: %i\n", status);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
