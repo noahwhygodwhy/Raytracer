@@ -46,17 +46,16 @@
 //class KDLeaf : public KDNode
 //{
 //public:
-//	vector<Shape*> shapes;
-//	KDLeaf(vector<Shape*> shapes);
+//	vector<UShape*> shapes;
+//	KDLeaf(vector<UShape*> shapes);
 //	~KDLeaf();
 //
 //private:
 //
 //};
-//void printKDTree(KDNode* b, int layer = 0);
 //
-//KDNode* buildKDTree(vector<Shape*> shapes, AABB box, Axis axis = X, int recusionWithoutChange = 0, int layer = 0);
-//bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double currentTIme, int layer = 0);
-//bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& hit, double currentTIme);
+//KDNode* buildKDTree(vector<UShape*> shapes, AABB box, Axis axis = X, int recusionWithoutChange = 0, int layer = 0);
+////bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double currentTIme, int layer = 0);
+////bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& hit, double currentTIme);
 //
 //#endif

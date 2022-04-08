@@ -12,9 +12,8 @@ using namespace std;
 using namespace std::filesystem;
 using namespace glm;
 
-#define MAX_SPHERES 50
+#define MAX_SHAPES 100000
 #define MAX_MATERIALS 10
-#define MAX_TRIANGLES 50000
 
 #define MAX_PATH 100u
 //#define OUTPUTPASSES 50
@@ -26,7 +25,7 @@ using namespace glm;
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 10000
+#define MONTE_CARLO_SAMPLES 1
 
 
 //#define BASIC_BITCH
@@ -104,32 +103,45 @@ void saveImage(string filepath, GLFWwindow* w) {
 }
 
 
-AABB redoAABBs(vector<Sphere>& spheres, vector<Triangle>&triangles, const vector<Vertex>& vertices) {
+AABB redoAABBs(vector<UShape>& shapes, const vector<Vertex>& vertices) {
 
 	AABB toReturn = { fvec4(0.0), fvec4(0.0) };
-	for (Sphere& s : spheres) {
-		s.shape.boundingBox.min = s.origin - fvec4(s.radius, s.radius, s.radius, 0.0f);
-		s.shape.boundingBox.max = s.origin + fvec4(s.radius, s.radius, s.radius, 0.0f);
-		toReturn.min = glm::min(toReturn.min, s.shape.boundingBox.min);
-		toReturn.max = glm::max(toReturn.max, s.shape.boundingBox.max);
-	}
-	for (Triangle& t : triangles) {
-		t.shape.boundingBox.min = t.shape.boundingBox.max = vertices[t.vertA].position;
+	for (UShape& s : shapes) {
+		switch (s.type) {
+		case 0:
+			fvec4 origin = fvec4(s.values.xyz, 0.0f);
+			//float radius = s.values.w;
+			s.boundingBox.min = origin - fvec4(fvec3(s.values.w), 0.0f);
+			s.boundingBox.max = origin + fvec4(fvec3(s.values.w), 0.0f);
+			break;
+		case 1:
+			s.boundingBox.min = s.boundingBox.max = vertices[int(s.values.x)].position;
 
-		t.shape.boundingBox.min = min(vertices[t.vertB].position, t.shape.boundingBox.min);// -fvec4(fvec3(bias), 0.0);
-		t.shape.boundingBox.min = min(vertices[t.vertC].position, t.shape.boundingBox.min);// - fvec4(fvec3(bias), 0.0);
+			s.boundingBox.min = min(vertices[int(s.values.y)].position, s.boundingBox.min) -fvec4(fvec3(glm::epsilon<float>()* 10.0f), 0.0);
+			s.boundingBox.min = min(vertices[int(s.values.z)].position, s.boundingBox.min) - fvec4(fvec3(glm::epsilon<float>() * 10.0f), 0.0);
 
-		t.shape.boundingBox.max = max(vertices[t.vertB].position, t.shape.boundingBox.max);// + fvec4(fvec3(bias), 0.0);
-		t.shape.boundingBox.max = max(vertices[t.vertC].position, t.shape.boundingBox.max);// + fvec4(fvec3(bias), 0.0);
-
-		toReturn.min = glm::min(toReturn.min, t.shape.boundingBox.min);
-		toReturn.max = glm::max(toReturn.max, t.shape.boundingBox.max);
+			s.boundingBox.max = max(vertices[int(s.values.y)].position, s.boundingBox.max) + fvec4(fvec3(glm::epsilon<float>() * 10.0f), 0.0);
+			s.boundingBox.max = max(vertices[int(s.values.z)].position, s.boundingBox.max) + fvec4(fvec3(glm::epsilon<float>() * 10.0f), 0.0);
+			break;
+		default:
+			printf("redo aabbs bad shape type\n");
+			exit(-1);
+			break;
+		}
+		toReturn.min = glm::min(toReturn.min, s.boundingBox.min);
+		toReturn.max = glm::max(toReturn.max, s.boundingBox.max);
 	}
 
 	return toReturn;
 }
 
 
+UShape makeSphere(fvec3 origin, float radius, uint materialIdx) {
+	return UShape(fvec4(origin, radius), AABB(), materialIdx, 0u);
+}
+UShape makeTriangle(uint a, uint b, uint c, uint materialIdx) {
+	return UShape(fvec4(a, b, c, 0), AABB(), materialIdx, 1u);
+}
 
 int main()
 {
@@ -220,19 +232,13 @@ int main()
 
 	cl_context context = clCreateContext(properties, 1, &device, NULL, NULL, &status);
 	cl_command_queue_properties* qProperties = new cl_command_queue_properties();
-
 	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
 
 	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
-	cl_mem clSpheres = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Sphere) * MAX_SPHERES, NULL, &status);
+	cl_mem clShapes = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(UShape) * MAX_SHAPES, NULL, &status);
 	cl_mem clMaterials = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Material) * MAX_MATERIALS, NULL, &status);
-
-	cl_mem clTriangles = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Triangle) * MAX_TRIANGLES, NULL, &status);
-	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_TRIANGLES * 3, NULL, &status);
-
+	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_SHAPES * 3, NULL, &status);
 	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
-
-
 
 	unsigned int frameTexture;
 	glGenTextures(1, &frameTexture);
@@ -279,15 +285,11 @@ int main()
 	cl_kernel kernel = clCreateKernel(program, "render", &status);
 
 	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
-	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clSpheres);
-	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clMaterials);
-	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clRandomBuffer);
-	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clTriangles);
-	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clVerts);
-	status = clSetKernelArg(kernel, 6, sizeof(cl_mem), &clFrameTexture);
-
-
-
+	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clShapes);
+	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clVerts);
+	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clMaterials);
+	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
 
 	//v this is the number of items to do, so like framex and framey?
 	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
@@ -337,25 +339,27 @@ int main()
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red light
 
 
-	vector<Sphere> spheres;
-	spheres.reserve(MAX_SPHERES);
+	vector<UShape> shapes;
+	shapes.reserve(MAX_SHAPES);
 
-	spheres.push_back(Sphere(fvec4(0.0f, 20.0f, 20.0f, 0.0f), Shape(AABB(), 1u, 0), 5.0));//light
+	shapes.push_back(makeSphere(fvec4(0.0f, 8.0f, 0.0f, 0.0f), 5.0f, 1u));//light
+
+	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//smal
 
 	//spheres.push_back(Sphere(fvec4(3.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 3u, 0), 3.0f));//transparent
 	//spheres.push_back(Sphere(fvec4(0.0f, 5.0f, 5.0f, 0.0f), Shape(AABB(), 2u, 0), 3.0f));//mirror
 
-	spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 3.0f));//foggy sphere
-	spheres.push_back(Sphere(fvec4(3.6f, 1.5f, 0.0f, 0.0f), Shape(AABB(), 5u, 0), 0.5f));//red light
+	//spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 3.0f));//foggy sphere
+	//spheres.push_back(Sphere(fvec4(3.6f, 1.5f, 0.0f, 0.0f), Shape(AABB(), 5u, 0), 0.5f));//red light
 
 
 
 
-	vector<Triangle> triangles;
-	triangles.reserve(MAX_TRIANGLES);
+	//vector<Triangle> triangles;
+	//triangles.reserve(MAX_TRIANGLES);
 
 	vector<Vertex> vertices;
-	vertices.reserve(MAX_TRIANGLES * 3);
+	vertices.reserve(MAX_SHAPES * 3);
 
 	/*
 	vertices.push_back(Vertex(fvec4(-10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
@@ -368,8 +372,11 @@ int main()
 	vertices.push_back(Vertex(fvec4(15, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
 	vertices.push_back(Vertex(fvec4(-5, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
 
-	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
-	triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 1));
+	shapes.push_back(makeTriangle(0, 3, 2, 0u));
+	shapes.push_back(makeTriangle(0, 2, 1, 0u));
+
+	//triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
+	//triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 1));
 
 
 
@@ -383,16 +390,18 @@ int main()
 	uint32_t fps = 30;
 
 
-	cl_event* waitAfterWrites = new cl_event[4];
+	cl_event* waitAfterWrites = new cl_event[3];
 
-	AABB sceneBounding = redoAABBs(spheres, triangles, vertices);
+	AABB sceneBounding = redoAABBs(shapes, vertices);
 
-	status = clEnqueueWriteBuffer(cmdQueue, clSpheres, CL_FALSE, 0, sizeof(Shape) * MAX_SPHERES, spheres.data(), 0, NULL, &waitAfterWrites[0]);
-	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_TRIANGLES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
+
+
+
+	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
+	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_SHAPES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
-	status = clEnqueueWriteBuffer(cmdQueue, clTriangles, CL_FALSE, 0, sizeof(Triangle) * MAX_TRIANGLES, triangles.data(), 0, NULL, &waitAfterWrites[3]);
 	cl_event* waitAfterFinalWrite = new cl_event;
-	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 4, waitAfterWrites, waitAfterFinalWrite);
+	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 3, waitAfterWrites, waitAfterFinalWrite);
 
 	cl_event* otherDataEvent = new cl_event;
 	cl_event* waitAfterProcessing = new cl_event;
@@ -462,7 +471,7 @@ int main()
 		//fvec3 eye = fvec3(sin(currentFrame) * 16, 4, cos(currentFrame) * 16);
 
 		fvec3 eye = fvec3(0.0f, 5.0f, 6.0f);
-		fvec3 lookat = fvec3(0.0, 3.0, 0.0);
+		fvec3 lookat = fvec3(0.0, 0.0, 0.0);
 
 		fvec3 camForward = glm::normalize(lookat - eye);
 		fvec3 camUp = glm::normalize(fvec3(0.0, 1, 0.0));
@@ -476,8 +485,19 @@ int main()
 		float focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
 
 
-		sceneBounding = redoAABBs(spheres, triangles, vertices);
-		OtherData otherData = { clearColor, fvec4(eye, 0.0f), fvec4(camRight, 0.0f), fvec4(camUp, 0.0f), fvec4(camForward, 0.0), 0, focal, currentFrame, MAX_PATH, uint(spheres.size()), uint(triangles.size()), MONTE_CARLO_SAMPLES};
+		sceneBounding = redoAABBs(shapes, vertices);
+		OtherData otherData = { 
+			clearColor, 
+			fvec4(eye, 0.0f), 
+			fvec4(camRight, 0.0f),
+			fvec4(camUp, 0.0f),
+			fvec4(camForward, 0.0),
+			focal,
+			currentFrame,
+			MAX_PATH,
+			uint(shapes.size()),
+			MONTE_CARLO_SAMPLES
+		};
 
 		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 1, waitAfterFinalWrite, otherDataEvent);
 		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 1, otherDataEvent, waitAfterProcessing);

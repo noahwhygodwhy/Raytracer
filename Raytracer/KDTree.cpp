@@ -126,95 +126,53 @@
 //}
 //
 //
-//void printKDBranch(KDBranch* b) {
-//	printf("%s split at %f\n", b->axis == 0 ? "X" : b->axis == 1 ? "Y" : "Z", b->value);
-//}
-//void spaces(int layer) {
-//	for (int i = 0; i < layer; i++) {
-//		printf(" ");
-//	}
-//}
-//void printKDTree(KDNode* b, int layer) {
-//	//spaces(layer);
-//	if (b->isLeaf) {
-//		KDLeaf* l = (KDLeaf*)b;
-//		printf("leaf with %zu shapes\n", l->shapes.size());
-//	}
-//	else {
-//		KDBranch* l = (KDBranch*)b;
-//
-//		printf("branch axis %s split at %f\n", l->axis == 0 ? "X" : l->axis == 1 ? "Y" : "Z", l->value);
-//		spaces(layer+1);
-//		printf("lesser: ");
-//		printKDTree(l->lesser, layer + 1);
-//		spaces(layer+1);
-//		printf("greater: ");
-//		printKDTree(l->greater, layer + 1);
-//		
-//	}
-//}
-//
-////https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.252.9650&rep=rep1&type=pdf
-//bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double currentTime, int layer) {
-//	if (tree->isLeaf) {
-//		bool itHit =  rayHitListOfShapes(
-//			((KDLeaf*)tree)->shapes,
-//			ray, hit, currentTime);
-//		return itHit;
-//	}
-//	else {
-//		KDBranch* currBranch = (KDBranch*)tree;
-//		optional<dvec3> enter;
-//		optional<dvec3> exit;
-//		bool didItHit = currBranch->area.rayAABB(ray, enter, exit);
-//		if (didItHit) {
-//			if (enter.value()[currBranch->axis] <= currBranch->value) {
-//
-//				if (exit.value()[currBranch->axis] < currBranch->value) {
-//					return traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
-//				}
-//				else {
-//					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
-//					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
-//					return leftSideHit || rightSideHit;
-//					/*bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
-//					/*if (leftSideHit) {
-//						return leftSideHit;
-//					}
-//					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);*/
-//				}
-//			}
-//			else {
-//				if (exit.value()[currBranch->axis] > currBranch->value) {
-//					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
-//				}
-//				else {
-//					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
-//					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
-//					return leftSideHit || rightSideHit;
-//					/*bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
-//					if (rightSideHit) {
-//						return rightSideHit;
-//					}
-//					return traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);*/
-//				}
-//			}
-//		}
-//	}
-//}
-//
-//bool rayHitListOfShapes(vector<Shape*> shapes, const Ray& ray, HitResult& minRayResult, double currentTime) {
-//	bool toReturn = false;
-//	for (Shape* shape : shapes) {
-//		HitResult rayResult;
-//		if (shape->rayAABB(ray)) {
-//			if (shape->rayHit(ray, rayResult, currentTime)) {
-//				if (rayResult.depth < minRayResult.depth) {
-//					toReturn = true;
-//					minRayResult = rayResult;
-//				}
-//			}
-//		}
-//	}
-//	return toReturn;
-//}
+////
+//////https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.252.9650&rep=rep1&type=pdf
+////bool traverseKDTree(KDNode* tree, const Ray& ray, HitResult& hit, double currentTime, int layer) {
+////	if (tree->isLeaf) {
+////		bool itHit =  rayHitListOfShapes(
+////			((KDLeaf*)tree)->shapes,
+////			ray, hit, currentTime);
+////		return itHit;
+////	}
+////	else {
+////		KDBranch* currBranch = (KDBranch*)tree;
+////		optional<dvec3> enter;
+////		optional<dvec3> exit;
+////		bool didItHit = currBranch->area.rayAABB(ray, enter, exit);
+////		if (didItHit) {
+////			if (enter.value()[currBranch->axis] <= currBranch->value) {
+////
+////				if (exit.value()[currBranch->axis] < currBranch->value) {
+////					return traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
+////				}
+////				else {
+////					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
+////					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+////					return leftSideHit || rightSideHit;
+////					/*bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
+////					/*if (leftSideHit) {
+////						return leftSideHit;
+////					}
+////					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);*/
+////				}
+////			}
+////			else {
+////				if (exit.value()[currBranch->axis] > currBranch->value) {
+////					return traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+////				}
+////				else {
+////					bool leftSideHit = traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);
+////					bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+////					return leftSideHit || rightSideHit;
+////					/*bool rightSideHit = traverseKDTree(currBranch->greater, ray, hit, currentTime, layer + 1);
+////					if (rightSideHit) {
+////						return rightSideHit;
+////					}
+////					return traverseKDTree(currBranch->lesser, ray, hit, currentTime, layer + 1);*/
+////				}
+////			}
+////		}
+////	}
+////}
+//// 

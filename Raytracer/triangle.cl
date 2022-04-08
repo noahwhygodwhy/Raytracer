@@ -1,7 +1,7 @@
 #include "shape.cl"
 #include "sharedStructs.cl"
 
-HitResult rayHitTriangle(const Triangle tri, const Ray ray, __global const Vertex* vertices, int shapeIdx) {
+HitResult rayHitTriangle(const UShape tri, const Ray ray, __global const Vertex* vertices, int shapeIdx) {
 
 	
     HitResult hit;
@@ -11,9 +11,14 @@ HitResult rayHitTriangle(const Triangle tri, const Ray ray, __global const Verte
 	//TODO: should really be done every frame, not every frame*ray
 
 	// constexpr float epsilon = epsilon<float>();
-	float3 a = vertices[tri.vertA].position.xyz;
-	float3 b = vertices[tri.vertB].position.xyz;
-	float3 c = vertices[tri.vertC].position.xyz;
+	Vertex vA = vertices[convert_int(tri.values.x)];
+	Vertex vB = vertices[convert_int(tri.values.y)];
+	Vertex vC = vertices[convert_int(tri.values.z)];
+
+
+	float3 a = vA.position.xyz;
+	float3 b = vB.position.xyz;
+	float3 c = vC.position.xyz;
 
 	float3 E1 = b - a;
 	float3 E2 = c - a;
@@ -51,16 +56,16 @@ HitResult rayHitTriangle(const Triangle tri, const Ray ray, __global const Verte
 
 	hit.depth = distance(hit.position, ray.origin);
 
-	float3 badNormal = ((vertices[tri.vertA].normal * bary.x) + (vertices[tri.vertB].normal * bary.y) + (vertices[tri.vertC].normal * bary.z)).xyz;
+	float3 badNormal = ((vA.normal * bary.x) + (vB.normal * bary.y) + (vC.normal * bary.z)).xyz;
 
 
 	hit.normal = badNormal;// transformNormal(badNormal, model);
 
 
 
-	hit.uv = ((vertices[tri.vertA].uv * bary.x) + (vertices[tri.vertB].uv * bary.y) + (vertices[tri.vertC].uv * bary.z)).xy;
+	hit.uv = ((vA.uv * bary.x) + (vB.uv * bary.y) + (vC.uv * bary.z)).xy;
 	
-	hit.matIdx = tri.shape.matIdx;
+	hit.matIdx = tri.matIdx;
 
 
 	//barycentric.z = dot(tri.E2, qvec);

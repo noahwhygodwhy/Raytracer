@@ -15,42 +15,40 @@
 #define BIAS 1e-3f
 
 HitResult rayHitListOfShapes(const Ray ray, 
-__global const Sphere* spheres, uint numberOfSpheres,
-__global const Triangle* triangles, __global const Vertex* vertices, uint numberOfTriangles){
+uint numberOfShapes,
+__global const UShape* shapes, 
+__global const Vertex* vertices){
     int x = (int)1<INFINITY;
 
     HitResult minRayResult;
 	minRayResult.hit = false;;
 	minRayResult.depth = INFINITY;
 
-    for (uint i = 0; i < numberOfSpheres; i++) {
-        
-        Sphere theSphere = spheres[i];
-        rayAABBResult resA = rayAABB(theSphere.shape.boundingBox, ray);
-
+    for(uint i = 0; i < numberOfShapes; i++){
+        rayAABBResult resA = rayAABB(shapes[i].boundingBox, ray);
         if (resA.hit) {
-            HitResult resB = rayHitSphere(theSphere, ray, i);
+            HitResult resB;
+            
+            switch(shapes[i].type){
+            case 0:
+                resB = rayHitSphere(shapes[i], ray, i);
+                break;
+            case 1:
+                resB = rayHitTriangle(shapes[i], ray, vertices, i);
+                break;
+            default:
+                return minRayResult;
+                break;
+            }
+            
             if(resB.hit) {
                 if (resB.depth < minRayResult.depth) {
                     minRayResult = resB;
                 }
             }
-        }
-    }
-    
-    for (uint i = 0; i < numberOfTriangles; i++) {
         
-        Triangle theTriangle = triangles[i];
-        //rayAABBResult resA = rayAABB(theTriangle.shape.boundingBox, ray);
 
-        //if (resA.hit) {
-            HitResult resB = rayHitTriangle(theTriangle, ray, vertices, i);
-            if(resB.hit) {
-                if (resB.depth < minRayResult.depth) {
-                    minRayResult = resB;
-                }
-            }
-        //}
+        }
     }
     return minRayResult;
 }    
@@ -145,21 +143,18 @@ float3 randomHemisphericalVector(float3 normal, ulong* state) {
 
 
 
-HitResult shootRay(Ray ray, __global const Sphere* spheres, uint numberOfSpheres,
-__global const Triangle* triangles, __global const Vertex* vertices, uint numbmerOfTriangles) {
-
-	return rayHitListOfShapes(ray, spheres, numberOfSpheres, triangles, vertices, numbmerOfTriangles);
-
+HitResult shootRay(Ray ray, uint numberOfShapes,
+__global const UShape* shapes, __global const Vertex* vertices) {
+	return rayHitListOfShapes(ray, numberOfShapes, shapes, vertices);
     //kd tree stuff goes here if you do that
 }
 
 __kernel void render(
     __global const OtherData* otherData,
-    __global const Sphere* spheres,
+    __global const UShape* shapes,
+    __global const Vertex* vertices,
     __global const Material* materials,
     __global ulong* randomBuffer,
-    __global const Triangle* triangles, 
-    __global const Vertex* vertices,
     write_only image2d_t outBuffer//,
     //__global float2* minMax
     )
@@ -227,8 +222,9 @@ __kernel void render(
         for(uint layer = 0; layer < otherData->maxDepth; layer++) {
 
             ray = newRay;
-            newHit = shootRay(ray, spheres, otherData->numberOfSpheres, triangles, vertices, otherData->numberOfTriangles);
             
+            newHit = shootRay(ray, otherData->numberOfShapes, shapes, vertices);
+            if(pixelX == 500 && pixelY == 500)printf("hit: %i\n", (int)newHit.hit);
             //hit needsmat idx not shape idx
             if(!newHit.hit){
                 if(layer==0u){

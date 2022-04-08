@@ -3,14 +3,14 @@
 
 #include "sharedStructs.cl"
 
-HitResult rayHitSphere(const Sphere sphere, const Ray ray, int shapeIdx){
+HitResult rayHitSphere(const UShape sphere, const Ray ray, int shapeIdx){
     HitResult hit;
     hit.hit = false;
 
-	float3 L = ray.origin.xyz - sphere.origin.xyz;
+	float3 L = ray.origin.xyz - sphere.values.xyz;
 	float a = dot(ray.direction, ray.direction);
 	float b = 2.0f * dot(ray.direction.xyz, L);
-	float c = dot(L, L) - (sphere.radius*sphere.radius);
+	float c = dot(L, L) - (sphere.values.w*sphere.values.w);
 	float t0, t1;
 	
     float2 temp = solveQuadratic(a, b, c);
@@ -34,12 +34,12 @@ HitResult rayHitSphere(const Sphere sphere, const Ray ray, int shapeIdx){
 	}
 	hit.hit = true;
 	hit.position = ray.origin + (ray.direction * t0);
-	hit.normal = normalize(hit.position - sphere.origin.xyz);
+	hit.normal = normalize(hit.position - sphere.values.xyz);
 
 	hit.uv = (float2)(atan2(hit.normal.x, hit.normal.z) / (2.0f * M_PI_F) + 0.5f, hit.normal.y * 0.5f + 0.5f);
 
 	hit.depth = t0;
-	hit.matIdx = sphere.shape.matIdx;
+	hit.matIdx = sphere.matIdx;
 
 	return hit;
 }

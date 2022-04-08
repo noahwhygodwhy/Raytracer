@@ -11,18 +11,19 @@ enum shapeType {
 
 #ifdef CPP
 
+    
+
     typedef struct alignas(16) OtherData {
-        float4 clearColor;
+        
+	    float4 clearColor;
         float4 eye;
         float4 camRight;
         float4 camUp;
         float4 camForward;
-        cl_long randomSeed;
         float focal;
         float currentTime;
         uint maxDepth;
-        uint numberOfSpheres;
-        uint numberOfTriangles;
+        uint numberOfShapes;
         uint numberOfSamples;
     }  OtherData;
 
@@ -44,6 +45,12 @@ enum shapeType {
         float4 max; 
     }  AABB;
 
+    typedef struct alignas(16) UShape{
+        float4 values;
+        AABB boundingBox;
+        uint matIdx;
+        uint type;
+    } UShape;
 
     typedef struct alignas(16) Shape {
         AABB boundingBox;
@@ -52,13 +59,13 @@ enum shapeType {
         
     }  Shape;
 
-    typedef struct alignas(16) Sphere {
-        float4 origin;
-        Shape shape;
-        float radius;
+    // typedef struct alignas(16) Sphere {
+    //     float4 origin;
+    //     Shape shape;
+    //     float radius;
 
         
-    } Sphere;
+    // } Sphere;
 
     typedef struct Vertex{
         float4 position;
@@ -66,12 +73,12 @@ enum shapeType {
         float4 uv;
     } Vertex;
 
-    typedef struct Triangle{
-        Shape shape;
-        uint vertA;
-        uint vertB;
-        uint vertC;
-    }Triangle;
+    // typedef struct Triangle{
+    //     Shape shape;
+    //     uint vertA;
+    //     uint vertB;
+    //     uint vertC;
+    // }Triangle;
 
 
 
@@ -105,12 +112,10 @@ enum shapeType {
         float4 camRight;
         float4 camUp;
         float4 camForward;
-        ulong randomSeed;
         float focal;
         float currentTime;
         uint maxDepth;
-        uint numberOfSpheres;
-        uint numberOfTriangles;
+        uint numberOfShapes;
         uint numberOfSamples;
     } OtherData;
 
@@ -150,6 +155,12 @@ enum shapeType {
     } AABB;
 
 
+    typedef struct UShape{
+        float4 values;
+        AABB boundingBox;
+        uint matIdx;
+        uint type;
+    } UShape;
     typedef struct Shape {
         AABB boundingBox;
         uint matIdx;
@@ -157,13 +168,13 @@ enum shapeType {
         
     } Shape;
 
-    typedef struct Sphere {
-        float4 origin;
-        Shape shape;
-        float radius;
+    // typedef struct Sphere {
+    //     float4 origin;
+    //     Shape shape;
+    //     float radius;
 
         
-    } Sphere;
+    // } Sphere;
 
     typedef struct Vertex{
         float4 position;
@@ -171,12 +182,12 @@ enum shapeType {
         float4 uv;
     } Vertex;
 
-    typedef struct Triangle{
-        Shape shape;
-        uint vertA;
-        uint vertB;
-        uint vertC;
-    }Triangle;
+    // typedef struct Triangle{
+    //     Shape shape;
+    //     uint vertA;
+    //     uint vertB;
+    //     uint vertC;
+    // }Triangle;
 #endif
 
 
