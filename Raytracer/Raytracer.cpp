@@ -1,5 +1,4 @@
 #include "Raytracer.hpp"
-#include "CookTorrance.hpp"
 #include "clTypeDefs.hpp"
 
 typedef float4 fvec4;
@@ -15,7 +14,7 @@ using namespace glm;
 #define MAX_SHAPES 1000
 #define MAX_MATERIALS 10
 
-#define MAX_PATH 100u
+#define MAX_PATH 300u
 //#define OUTPUTPASSES 50
 #define OUTPUTFRAMES 189
 //#define EVERYFRAME INFINITY
@@ -25,7 +24,7 @@ using namespace glm;
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 1000
+#define MONTE_CARLO_SAMPLES 100
 
 
 //#define BASIC_BITCH
@@ -33,8 +32,8 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 2000;
-uint32_t frameY = 2000;
+uint32_t frameX = 1200;
+uint32_t frameY = 1200;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -90,14 +89,15 @@ void saveImage(string filepath, GLFWwindow* w) {
 	string outDir = "out/"+saveFileDirectory+"/";
 	int width, height;
 	glfwGetFramebufferSize(w, &width, &height);
-	GLsizei nrChannels = 3;
+	GLsizei nrChannels = 4;
 	GLsizei stride = nrChannels * width;
 	stride += (stride % 4) ? (4 - stride % 4) : 0;
 	GLsizei bufferSize = stride * height;
-	std::vector<char> buffer(bufferSize);
+	std::vector<float> buffer(bufferSize);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glReadBuffer(GL_FRONT);
-	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, buffer.data());
+	//TODO read it as floats, apply correction, then convert it to GL_UNSIGNED_BYTE and output image
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png((outDir + filepath).c_str(), width, height, nrChannels, buffer.data(), stride);
 }
@@ -148,122 +148,8 @@ UShape makeTriangle(uint a, uint b, uint c, uint materialIdx) {
 
 
 
-
-
-void nothing() {
-	cl_uint numPlatforms;
-	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
-	if (status != CL_SUCCESS)
-		fprintf(stderr, "clGetPlatformIDs failed (1)\n");
-	printf("Number of Platforms = %d\n", numPlatforms);
-	cl_platform_id* platforms = new cl_platform_id[numPlatforms];
-	status = clGetPlatformIDs(numPlatforms, platforms, NULL);
-	if (status != CL_SUCCESS)
-		fprintf(stderr, "clGetPlatformIDs failed (2)\n");
-	cl_uint numDevices;
-	cl_device_id* devices;
-
-
-
-	printf("num platforms: %u\n", numPlatforms);
-	int i = 0;
-	for (int i = 0; i < numPlatforms; i++) {
-
-
-		printf("Platform #%d:\n", i);
-		size_t size;
-		char* str;
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, NULL, &size);
-		str = new char[size];
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, size, str, NULL);
-		printf("\tName = '%s'\n", str);
-		delete[] str;
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, NULL, &size);
-		str = new char[size];
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, size, str, NULL);
-		printf("\tVendor = '%s'\n", str);
-		delete[] str;
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 0, NULL, &size);
-		str = new char[size];
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, size, str, NULL);
-		printf("\tVersion = '%s'\n", str);
-		delete[] str;
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, 0, NULL, &size);
-		str = new char[size];
-		clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, size, str, NULL);
-		printf("\tProfile = '%s'\n", str);
-		delete[] str;
-		// find out how many devices are attached to each platform and get their ids:
-		status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
-		if (status != CL_SUCCESS)
-			fprintf(stderr, "clGetDeviceIDs failed (2)\n");
-		printf("num devices: %u\n", numDevices);
-		devices = new cl_device_id[numDevices];
-		status = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
-		if (status != CL_SUCCESS)
-			fprintf(stderr, "clGetDeviceIDs failed (2)\n");
-		for (int j = 0; j < numDevices; j++) {
-		
-			printf("\tDevice #%d:\n", j);
-			//size_t size;
-			cl_device_type type;
-			cl_uint ui;
-			size_t sizes[3] = { 0, 0, 0 };
-			clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
-			printf("\t\tType = 0x%04x = ", type);
-			switch (type)
-			{
-			case CL_DEVICE_TYPE_CPU:
-				printf("CL_DEVICE_TYPE_CPU\n");
-				break;
-			case CL_DEVICE_TYPE_GPU:
-				printf("CL_DEVICE_TYPE_GPU\n");
-				break;
-			case CL_DEVICE_TYPE_ACCELERATOR:
-				printf("CL_DEVICE_TYPE_ACCELERATOR\n");
-				break;
-			default:
-				printf("Other...\n");
-				break;
-			}
-			clGetDeviceInfo(devices[j], CL_DEVICE_VENDOR_ID, sizeof(ui), &ui, NULL);
-			printf("\t\tDevice Vendor ID = 0x%04x\n", ui);
-			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ui), &ui, NULL);
-			printf("\t\tDevice Maximum Compute Units = %d\n", ui);
-			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(ui), &ui, NULL);
-			printf("\t\tDevice Maximum Work Item Dimensions = %d\n", ui);
-			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(sizes), sizes, NULL);
-			printf("\t\tDevice Maximum Work Item Sizes = %d x %d x %d\n", sizes[0], sizes[1], sizes[2]);
-			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size), &size, NULL);
-			printf("\t\tDevice Maximum Work Group Size = %d\n", size);
-			clGetDeviceInfo(devices[j], CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(ui), &ui, NULL);
-			printf("\t\tDevice Maximum Clock Frequency = %d MHz\n", ui);
-
-			clGetDeviceInfo(devices[j], CL_DEVICE_ADDRESS_BITS, sizeof(ui), &ui, NULL);
-			printf("\t\tDevice Address Bits = %d\n", ui);
-
-			size_t extensionSize;
-			clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, 0, NULL, &extensionSize);
-			char* extensions = new char[extensionSize];
-			clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, extensionSize, extensions, NULL);
-			fprintf(stderr, "\nDevice Extensions:\n");
-			for (int i = 0; i < (int)strlen(extensions); i++)
-			{
-				if (extensions[i] == ' ')
-					extensions[i] = '\n';
-			}
-			fprintf(stderr, "%s\n", extensions);
-			delete[] extensions;
-		}
-	}
-}
-
-
-
-
 int main()
 {
-
 	srand(0u);
 
 	glfwInit();
@@ -274,7 +160,6 @@ int main()
 	glfwWindowHint(GLFW_SRGB_CAPABLE, 1);
 	glfwWindowHint(GLFW_SAMPLES, 16);
 
-
 	GLFWwindow* window = glfwCreateWindow(GLsizei(frameX), GLsizei(frameY), "Renderer", NULL, NULL);
 	if (window == NULL)
 	{
@@ -282,7 +167,6 @@ int main()
 		exit(-1);
 	}
 	glfwMakeContextCurrent(window);
-	
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -294,12 +178,14 @@ int main()
 	glEnable(GL_FRAMEBUFFER_SRGB);
 
 
-	unsigned int VBO, VAO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
+	//unsigned int VBO, VAO;
+	//glGenVertexArrays(1, &VAO);
+	//glGenBuffers(1, &VBO);
+	//glBindVertexArray(VAO);
+	//glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	//glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
+
+
 
 	cl_uint numPlatforms;
 	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
@@ -366,6 +252,10 @@ int main()
 	printf("create buffer 4 status: %i\n", status);
 
 
+
+
+
+
 	GLuint frameFBO;
 	glGenFramebuffers(1, &frameFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, frameFBO);
@@ -381,10 +271,11 @@ int main()
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTexture, 0);
 
 
-	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, frameTexture, &status);
+	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, frameTexture, &status);
 	printf("create buffer 5 status: %i\n", status);
 	clEnqueueAcquireGLObjects(cmdQueue, 1, &clFrameTexture, 0, NULL, NULL);
 	//printf("cltesttexture status: %i\n", status);
+
 
 
 
@@ -447,8 +338,6 @@ int main()
 	//and each side must be less than the coresponding size in CL_DEVICE_MAX_WORK_ITEM_SIZES (1024x1024x64)
 	size_t localWorkSize[3] = { NULL, NULL, NULL };
 
-	cl_event ev;
-
 
 
 
@@ -461,6 +350,7 @@ int main()
 
 	mt19937_64 numGen;
 	randomBuffer = new uint64_t[frameX * frameY]();
+
 	for (size_t i = 0; i < frameX * frameY; i++) {
 		randomBuffer[i] = numGen();
 		//printf("random buffer %i: %zu\n", i, randomBuffer[i]);
@@ -476,7 +366,7 @@ int main()
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(5.6f, 5.6f, 5.6f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54, 0.95f, 0.0f, 0.0f, 0u, 0u));//transparenty
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f, 0u, 0u));//mirrorA
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.005f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.00100f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red 
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 6.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//blue light
 
@@ -484,10 +374,10 @@ int main()
 	vector<UShape> shapes;
 	shapes.reserve(MAX_SHAPES);
 
-	shapes.push_back(makeSphere(fvec4(7.0f, 0.0f, 0.0f, 0.0f), 1.0f, 5u));//light
+	shapes.push_back(makeSphere(fvec4(6.7f, 0.0f, 0.0f, 0.0f), 1.0f, 5u));//light
 	shapes.push_back(makeSphere(fvec4(-5.0f, 0.0f, 0.0f, 0.0f), 1.0f, 6u));//light
 
-	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 8.0f, 4u));//fog
+	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 19.9f, 4u));//fog
 
 	shapes.push_back(makeSphere(fvec4(-12.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//small ball
 
@@ -515,12 +405,19 @@ int main()
 	uint32_t fps = 30;
 
 
-	cl_event* waitAfterWrites = new cl_event[3];
+	cl_event* waitAfterWrites = new cl_event[5];
 
 	AABB sceneBounding = redoAABBs(shapes, vertices);
 
 
 
+	OtherData otherData = {
+		clearColor,
+		fps,
+		MAX_PATH,
+		uint(shapes.size()),
+		MONTE_CARLO_SAMPLES
+	};
 
 	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
 	printf("write 0 status: %i\n", status);
@@ -530,11 +427,19 @@ int main()
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
 	printf("write 2 status: %i\n", status);
 	cl_event* waitAfterFinalWrite = new cl_event;
-	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 3, waitAfterWrites, waitAfterFinalWrite);
+	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[3]);
 	printf("write 3 status: %i\n", status);
+	status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[4]);
+	printf("write 4 status: %i\n", status);
+
+	clWaitForEvents(5, waitAfterWrites);
+
+
+
 
 	cl_event* otherDataEvent = new cl_event;
 	cl_event* waitAfterProcessing = new cl_event;
+
 
 #if defined(OUTPUTFRAMES)|| defined(OUTPUTPASSES)
 
@@ -552,7 +457,7 @@ int main()
 
 #ifdef OUTPUTFRAMES
 	for (; frameCounter < OUTPUTFRAMES;) {
-	double currentFrame = double(frameCounter) / double(fps);
+		double currentFrame = double(frameCounter) / double(fps);
 
 
 
@@ -590,63 +495,29 @@ int main()
 			printf("fps: %f\n", sum / 30.0f);
 		}
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
-		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 
 
 
 
-		constexpr double mypi = glm::pi<double>();
 
+		status = clSetKernelArg(kernel, 6, sizeof(cl_uint), &frameCounter);
+		printf("set arg 6 status: %i\n ", status);
 
-		fvec3 eye = fvec3(sin(currentFrame) * 20, 4, cos(currentFrame) * 20);
-
-		//fvec3 eye = fvec3(0.0f, 0.0f, 20.0f);
-		fvec3 lookat = fvec3(0.0, 0.0, 0.0);
-
-		fvec3 camForward = glm::normalize(lookat - eye);
-		fvec3 camUp = glm::normalize(fvec3(0.0, 1, 0.0));
-		fvec3 camRight = glm::cross(camForward, camUp);
-		camUp = glm::cross(camRight, camForward);
-
-		float viewPortHeight = 2.0f;
-		float viewPortWidth = viewPortHeight * frameRatio;
-
-		float fov = 120;
-		float focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
-
-
-		sceneBounding = redoAABBs(shapes, vertices);
-		OtherData otherData = { 
-			clearColor, 
-			fvec4(eye, 0.0f), 
-			fvec4(camRight, 0.0f),
-			fvec4(camUp, 0.0f),
-			fvec4(camForward, 0.0),
-			focal,
-			currentFrame,
-			MAX_PATH,
-			uint(shapes.size()),
-			MONTE_CARLO_SAMPLES
-		};
-
-
-
-		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 1, waitAfterFinalWrite, otherDataEvent);
-		printf("write 5 status: %i\n", status);
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 1, otherDataEvent, waitAfterProcessing);
+		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 		printf("range kernel: %i\n", status);
 
 
 
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glDrawBuffer(GL_BACK);
+
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, frameFBO);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
+
 		glBlitFramebuffer(0, 0, frameX, frameY, 0, 0, frameX, frameY, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
+
 		processInput(window);
 		glfwPollEvents();
 

@@ -16,26 +16,8 @@
     <Filter Include="Header Files\external">
       <UniqueIdentifier>{5a47e564-3287-47a7-9ab1-ee4e73e2e049}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Objects">
-      <UniqueIdentifier>{198a7444-a970-4966-8fb3-23dcd77a2d9f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Objects\lenses">
-      <UniqueIdentifier>{d36ee5a6-e005-4408-a799-937b211ac8cd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Material">
-      <UniqueIdentifier>{13a4a72e-176f-4260-9c85-6e24987e84d5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Material">
       <UniqueIdentifier>{addd475e-edea-4310-ae5c-e7e73b18f174}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Objects">
-      <UniqueIdentifier>{ef91e5c2-f9d1-4a5d-aa7d-26dea136f0b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Objects\lenses">
-      <UniqueIdentifier>{d7200146-34b3-4748-ab00-2f5d8a474db0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Lights">
-      <UniqueIdentifier>{6072426a-7e51-40fb-9810-c5e21d472296}</UniqueIdentifier>
     </Filter>
     <Filter Include="OpenCL">
       <UniqueIdentifier>{b276145d-abbe-4115-83c6-174e1d1802f4}</UniqueIdentifier>
@@ -51,46 +33,10 @@
     <ClCompile Include="Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Model.hpp">
-      <Filter>Header Files\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="Material.cpp">
-      <Filter>Source Files\Material</Filter>
-    </ClCompile>
-    <ClCompile Include="Procedural.cpp">
-      <Filter>Source Files\Material</Filter>
-    </ClCompile>
     <ClCompile Include="Texture.cpp">
       <Filter>Source Files\Material</Filter>
     </ClCompile>
-    <ClCompile Include="Biconvex.cpp">
-      <Filter>Source Files\Objects\lenses</Filter>
-    </ClCompile>
-    <ClCompile Include="Shape.cpp">
-      <Filter>Source Files\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="Sphere.cpp">
-      <Filter>Source Files\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="Triangle.cpp">
-      <Filter>Source Files\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="Animatable.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Ray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Model.cpp">
-      <Filter>Source Files\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="CoordinateHelpers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="KDTree.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CookTorrance.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -110,9 +56,6 @@
     <ClInclude Include="Shader.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Ray.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="KDTree.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -125,37 +68,7 @@
     <ClInclude Include="stb_image.h">
       <Filter>Header Files\external</Filter>
     </ClInclude>
-    <ClInclude Include="Shape.hpp">
-      <Filter>Header Files\Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Triangle.hpp">
-      <Filter>Header Files\Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Sphere.hpp">
-      <Filter>Header Files\Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Animatable.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Biconvex.hpp">
-      <Filter>Header Files\Objects\lenses</Filter>
-    </ClInclude>
-    <ClInclude Include="Material.hpp">
-      <Filter>Header Files\Material</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture.hpp">
-      <Filter>Header Files\Material</Filter>
-    </ClInclude>
-    <ClInclude Include="Procedural.hpp">
-      <Filter>Header Files\Material</Filter>
-    </ClInclude>
-    <ClInclude Include="CoordinateHelpers.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Raytracer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CookTorrance.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="opencl.hpp">

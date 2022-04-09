@@ -43,21 +43,21 @@
 
 
 #include "Shader.hpp"
-#include "Model.hpp"
-//#include "WorkerPool.hpp"
-
-#include "CoordinateHelpers.hpp"
-
-#include "Material.hpp"
-#include "Texture.hpp"
-#include "Procedural.hpp"
-
-#include "Triangle.hpp"
-#include "Ray.hpp"
-#include "KDTree.hpp"
-#include "Shape.hpp"
-#include "Sphere.hpp"
-#include "Biconvex.hpp"
+//#include "Model.hpp"
+////#include "WorkerPool.hpp"
+//
+//#include "CoordinateHelpers.hpp"
+//
+//#include "Material.hpp"
+//#include "Texture.hpp"
+//#include "Procedural.hpp"
+//
+//#include "Triangle.hpp"
+//#include "Ray.hpp"
+//#include "KDTree.hpp"
+//#include "Shape.hpp"
+//#include "Sphere.hpp"
+//#include "Biconvex.hpp"
 
 using namespace std;
 using namespace std::filesystem;

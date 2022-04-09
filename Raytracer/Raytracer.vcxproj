@@ -143,23 +143,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Animatable.cpp" />
-    <ClCompile Include="Biconvex.cpp" />
-    <ClCompile Include="CookTorrance.cpp" />
-    <ClCompile Include="CoordinateHelpers.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="KDTree.cpp" />
-    <ClCompile Include="Material.cpp" />
-    <ClCompile Include="Model.cpp" />
-    <ClCompile Include="Model.hpp" />
-    <ClCompile Include="Procedural.cpp" />
-    <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Raytracer.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="Shape.cpp" />
-    <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="Triangle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="frag.glsl" />
@@ -168,24 +156,13 @@
     <None Include="vert.glsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CookTorrance.hpp" />
     <ClInclude Include="opencl.hpp" />
     <ClInclude Include="Raytracer.hpp" />
-    <ClInclude Include="Animatable.hpp" />
-    <ClInclude Include="Biconvex.hpp" />
-    <ClInclude Include="CoordinateHelpers.hpp" />
     <ClInclude Include="glad.h" />
     <ClInclude Include="KDTree.hpp" />
-    <ClInclude Include="Material.hpp" />
-    <ClInclude Include="Procedural.hpp" />
-    <ClInclude Include="Shape.hpp" />
-    <ClInclude Include="Ray.hpp" />
     <ClInclude Include="Shader.hpp" />
-    <ClInclude Include="Sphere.hpp" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_write.h" />
-    <ClInclude Include="Texture.hpp" />
-    <ClInclude Include="Triangle.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
