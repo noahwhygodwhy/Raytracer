@@ -96,7 +96,9 @@ void saveImage(string filepath, GLFWwindow* w) {
 	std::vector<float> buffer(bufferSize);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glReadBuffer(GL_FRONT);
-	glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, buffer.data());
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+
+
 	//TODO read it as floats, apply correction, then convert it to GL_UNSIGNED_BYTE and output image
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png((outDir + filepath).c_str(), width, height, nrChannels, buffer.data(), stride);
@@ -322,6 +324,10 @@ int main()
 	printf("set arg 4 status: %i\n", status);
 	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
 	printf("set arg 5 status: %i\n ", status);
+	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	printf("set arg 4 status: %i\n", status);
+	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg 5 status: %i\n ", status);
 
 	//v this is the number of items to do, so like framex and framey?
 	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
@@ -431,6 +437,8 @@ int main()
 	printf("write 3 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[4]);
 	printf("write 4 status: %i\n", status);
+
+
 
 	clWaitForEvents(5, waitAfterWrites);
 
