@@ -14,6 +14,41 @@
 
 #define BIAS 1e-3f
 
+
+//stolen from https://streamhpc.com/blog/2016-02-09/atomic-operations-for-floats-in-opencl-improved/
+ inline void atomicMax_g_f(volatile __global float3 *addr, float3 val)
+{
+union {
+unsigned int u32;
+float3 f32;
+} next, expected, current;
+current.f32 = *addr;
+do {
+expected.f32 = current.f32;
+next.f32 = max(expected.f32, val);
+current.u32 = atomic_cmpxchg( (volatile __global unsigned int *)addr,
+expected.u32, next.u32);
+} while( current.u32 != expected.u32 );
+}
+
+ inline void atomicMin_g_f(volatile __global float3 *addr, float3 val)
+{
+union {
+unsigned int u32;
+float3 f32;
+} next, expected, current;
+current.f32 = *addr;
+do {
+expected.f32 = current.f32;
+next.f32 = min(expected.f32, val);
+current.u32 = atomic_cmpxchg( (volatile __global unsigned int *)addr,
+expected.u32, next.u32);
+} while( current.u32 != expected.u32 );
+}
+
+
+
+
 HitResult rayHitListOfShapes(const Ray ray, 
 uint numberOfShapes,
 __global const UShape* shapes, 
@@ -155,18 +190,42 @@ __kernel void render(
     __global const Vertex* vertices,
     __global const Material* materials,
     __global ulong* randomBuffer,
-    write_only image2d_t outBuffer//,
+    read_write image2d_t outBuffer,
+    const uint frameCounter,
+    volatile __global float3* minLum,
+    volatile __global float3* maxLum
     //__global float2* minMax
-    )
-    {
+    )  {
 
+
+
+
+    float currentFrame = ((float)frameCounter)/(float)otherData->fps;
 
     int frameX = get_global_size(0);
     int frameY = get_global_size(1);
 
+    float frameRatio = (float)frameX/(float)frameY;
+
+    float3 eye = (float3)(sin(currentFrame) * 20, 4, cos(currentFrame) * 20);
+
+    //fvec3 eye = fvec3(0.0f, 0.0f, 20.0f);
+    float3 lookat = (float3)(0.0, 0.0, 0.0);
+
+    float3 camForward = normalize(lookat - eye);
+    float3 camUp = normalize((float3)(0.0, 1, 0.0));
+    float3 camRight = cross(camForward, camUp);
+    camUp = cross(camRight, camForward);
+
+    float viewPortHeight = 2.0f;
+    float viewPortWidth = viewPortHeight * frameRatio;
+
+    float fov = 120;
+    float focal = (viewPortHeight / 2.0) / tan(radians(fov / 2.0));
+
+
     int pixelX = get_global_id(0);
     int pixelY = get_global_id(1);
-
 
     int sampleN = 0;//get_global_id(2);
 
@@ -182,7 +241,7 @@ __kernel void render(
     float normalizedY = (((float)(pixelY)/(float)(frameY))-0.5f);//*2.0f;
 
 
-    float4 coordOnScreen = (normalizedX * otherData->camRight) + (normalizedY * otherData->camUp) + otherData->eye + (otherData->camForward * otherData->focal);
+    float4 coordOnScreen = (float4)((normalizedX * camRight) + (normalizedY * camUp) + eye + (camForward * focal), 0.0);
     
     float2 clipSpacePixelSize = (float2)(1.0f / max((float)(frameX - 1.0f), 1.0f), 1.0f / max((float)(frameY - 1.0f), 1.0f));
 
@@ -197,9 +256,9 @@ __kernel void render(
     Ray ray;
     Ray newRay;
 // 
-    ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - otherData->eye.xyz);
+    ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - eye.xyz);
 
-    ray.origin = otherData->eye.xyz;
+    ray.origin = eye.xyz;
     newRay = ray;
 
 
@@ -212,8 +271,8 @@ __kernel void render(
 
     float3 monteAccum = (float3)(0.0f);
     for(uint monte = 0; monte < otherData->numberOfSamples; monte++){
-        ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - otherData->eye.xyz);
-        ray.origin = otherData->eye.xyz;
+        ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - eye.xyz);
+        ray.origin = eye.xyz;
         newRay = ray;
 
         float3 accumulated = (float3)(0.0f);
@@ -224,7 +283,7 @@ __kernel void render(
             ray = newRay;
             
             newHit = shootRay(ray, otherData->numberOfShapes, shapes, vertices);
-            if(pixelX == 500 && pixelY == 500)printf("hit: %i\n", (int)newHit.hit);
+            //if(pixelX == 500 && pixelY == 500)printf("hit: %i\n", (int)newHit.hit);
             //hit needsmat idx not shape idx
             if(!newHit.hit){
                 if(layer==0u){
@@ -326,7 +385,7 @@ __kernel void render(
                 // //dvec3 ctSpecular = CookTorance(ray, reflectionRay, minRayResult, downstreamRadiance, minRayResult.shape->mat, currentIOR, F0, kS);
                 // //TODO: need to keep the current ray
                 float3 kS;
-                float3 cT = max(CookTorance(ray, newRay, newHit, mat, ior, F0, &kS), 0.0);
+                float3 cT = max(CookTorance(ray, newRay, newHit, mat, ior, F0, &kS), 0.0f);
         //blinn phong (ish)
                 //float3 R = rotateVector(newRay.direction, M_PI_F, newHit.normal);//TODO: not the right rotate
                 float3 V = -ray.direction;
@@ -348,15 +407,65 @@ __kernel void render(
 
         monteAccum += accumulated;
     }
-
+    //printf("on pixel %i\n", pixelIdx);
     float4 result = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
-    if(pixelX == 500 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
+    //if(pixelX == 500 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
     write_imagef(outBuffer, (int2) (pixelX, pixelY), result);
+    atomicMin_g_f(minLum, result.xyz);
+    atomicMax_g_f(maxLum, result.xyz);
     randomBuffer[pixelIdx] = state;
 }
 
+__kernel void toneMap(
+    __global const OtherData* otherData,
+    __global const UShape* shapes,
+    __global const Vertex* vertices,
+    __global const Material* materials,
+    __global ulong* randomBuffer,
+    read_write image2d_t outBuffer,
+    const uint frameCounter,
+    volatile __global float3* minLum,
+    volatile __global float3* maxLum
+    //__global float2* minMax
+    )  {
 
 
+         float currentFrame = ((float)frameCounter)/(float)otherData->fps;
+
+    int frameX = get_global_size(0);
+    int frameY = get_global_size(1);
+
+    float frameRatio = (float)frameX/(float)frameY;
+
+    float3 eye = (float3)(sin(currentFrame) * 20, 4, cos(currentFrame) * 20);
+
+    //fvec3 eye = fvec3(0.0f, 0.0f, 20.0f);
+    float3 lookat = (float3)(0.0, 0.0, 0.0);
+
+    float3 camForward = normalize(lookat - eye);
+    float3 camUp = normalize((float3)(0.0, 1, 0.0));
+    float3 camRight = cross(camForward, camUp);
+    camUp = cross(camRight, camForward);
+
+    float viewPortHeight = 2.0f;
+    float viewPortWidth = viewPortHeight * frameRatio;
+
+    float fov = 120;
+    float focal = (viewPortHeight / 2.0) / tan(radians(fov / 2.0));
+
+
+    int pixelX = get_global_id(0);
+    int pixelY = get_global_id(1);
+
+    int sampleN = 0;//get_global_id(2);
+
+
+    int pixelIdx = pixelX+(frameX*pixelY);
+    if(pixelIdx == 0){
+
+        printf("min: %f, max: %f\n", *minLum, *maxLum);
+    }
+    }
 
 
 //slide 25 https://web.engr.oregonstate.edu/~mjb/cs575/Handouts/opencl.2pp.pdf

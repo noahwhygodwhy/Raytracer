@@ -16,12 +16,13 @@ enum shapeType {
     typedef struct alignas(16) OtherData {
         
 	    float4 clearColor;
-        float4 eye;
-        float4 camRight;
-        float4 camUp;
-        float4 camForward;
-        float focal;
-        float currentTime;
+        //float4 eye;
+        //float4 camRight;
+        //float4 camUp;
+        //float4 camForward;
+        //float focal;
+        //float currentTime;
+        uint fps;
         uint maxDepth;
         uint numberOfShapes;
         uint numberOfSamples;
@@ -108,16 +109,17 @@ enum shapeType {
     typedef struct OtherData {
         
 	    float4 clearColor;
-        float4 eye;
-        float4 camRight;
-        float4 camUp;
-        float4 camForward;
-        float focal;
-        float currentTime;
+        //float4 eye;
+        //float4 camRight;
+        //float4 camUp;
+        //float4 camForward;
+        //float focal;
+        //float currentTime;
+        uint fps;
         uint maxDepth;
         uint numberOfShapes;
         uint numberOfSamples;
-    } OtherData;
+    }  OtherData;
 
 
     typedef struct Material {

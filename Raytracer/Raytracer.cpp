@@ -1,5 +1,4 @@
 #include "Raytracer.hpp"
-#include "CookTorrance.hpp"
 #include "clTypeDefs.hpp"
 
 typedef float4 fvec4;
@@ -12,20 +11,20 @@ using namespace std;
 using namespace std::filesystem;
 using namespace glm;
 
-#define MAX_SHAPES 100000
+#define MAX_SHAPES 1000
 #define MAX_MATERIALS 10
 
-#define MAX_PATH 100u
+#define MAX_PATH 300u
 //#define OUTPUTPASSES 50
-//#define OUTPUTFRAMES 189
+#define OUTPUTFRAMES 189
 //#define EVERYFRAME INFINITY
 //#define CONCURRENT_FOR
 //#define KDTRACE
-#define CIN
+//#define CIN
 //#define PPCIN
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 1
+#define MONTE_CARLO_SAMPLES 100
 
 
 //#define BASIC_BITCH
@@ -33,8 +32,8 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 1000;
-uint32_t frameY = 1000;
+uint32_t frameX = 1200;
+uint32_t frameY = 1200;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -90,14 +89,17 @@ void saveImage(string filepath, GLFWwindow* w) {
 	string outDir = "out/"+saveFileDirectory+"/";
 	int width, height;
 	glfwGetFramebufferSize(w, &width, &height);
-	GLsizei nrChannels = 3;
+	GLsizei nrChannels = 4;
 	GLsizei stride = nrChannels * width;
 	stride += (stride % 4) ? (4 - stride % 4) : 0;
 	GLsizei bufferSize = stride * height;
-	std::vector<char> buffer(bufferSize);
+	std::vector<float> buffer(bufferSize);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glReadBuffer(GL_FRONT);
-	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+
+
+	//TODO read it as floats, apply correction, then convert it to GL_UNSIGNED_BYTE and output image
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png((outDir + filepath).c_str(), width, height, nrChannels, buffer.data(), stride);
 }
@@ -143,9 +145,13 @@ UShape makeTriangle(uint a, uint b, uint c, uint materialIdx) {
 	return UShape(fvec4(a, b, c, 0), AABB(), materialIdx, 1u);
 }
 
+
+
+
+
+
 int main()
 {
-
 	srand(0u);
 
 	glfwInit();
@@ -156,7 +162,6 @@ int main()
 	glfwWindowHint(GLFW_SRGB_CAPABLE, 1);
 	glfwWindowHint(GLFW_SAMPLES, 16);
 
-
 	GLFWwindow* window = glfwCreateWindow(GLsizei(frameX), GLsizei(frameY), "Renderer", NULL, NULL);
 	if (window == NULL)
 	{
@@ -164,7 +169,6 @@ int main()
 		exit(-1);
 	}
 	glfwMakeContextCurrent(window);
-	
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -176,12 +180,14 @@ int main()
 	glEnable(GL_FRAMEBUFFER_SRGB);
 
 
-	unsigned int VBO, VAO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
+	//unsigned int VBO, VAO;
+	//glGenVertexArrays(1, &VAO);
+	//glGenBuffers(1, &VBO);
+	//glBindVertexArray(VAO);
+	//glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	//glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
+
+
 
 	cl_uint numPlatforms;
 	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
@@ -195,12 +201,12 @@ int main()
 	cl_uint numDevices;
 	cl_device_id* devices;
 
+	
 
-
-	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
 
 	devices = new cl_device_id[numDevices];
-	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
 
 	cl_device_type type;
 	size_t sizes[3] = { 0, 0, 0 };
@@ -231,14 +237,30 @@ int main()
 	0};
 
 	cl_context context = clCreateContext(properties, 1, &device, NULL, NULL, &status);
+	printf("context status: %i\n", status);
 	cl_command_queue_properties* qProperties = new cl_command_queue_properties();
 	cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, device, qProperties, &status);
+	printf("cmdqueue status: %i\n", status);
 
 	cl_mem clOtherData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(OtherData), NULL, &status);
+	printf("create buffer 0 status: %i\n", status);
 	cl_mem clShapes = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(UShape) * MAX_SHAPES, NULL, &status);
+	printf("create buffer 1 status: %i\n", status);
 	cl_mem clMaterials = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Material) * MAX_MATERIALS, NULL, &status);
+	printf("create buffer 2 status: %i\n", status);
 	cl_mem clVerts = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Vertex) * MAX_SHAPES * 3, NULL, &status);
+	printf("create buffer 3 status: %i\n", status);
 	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
+	printf("create buffer 4 status: %i\n", status);
+
+
+
+
+
+
+	GLuint frameFBO;
+	glGenFramebuffers(1, &frameFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, frameFBO);
 
 	unsigned int frameTexture;
 	glGenTextures(1, &frameTexture);
@@ -248,9 +270,14 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTexture, 0);
 
-	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, frameTexture, &status);
+
+	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, frameTexture, &status);
+	printf("create buffer 5 status: %i\n", status);
+	clEnqueueAcquireGLObjects(cmdQueue, 1, &clFrameTexture, 0, NULL, NULL);
 	//printf("cltesttexture status: %i\n", status);
+
 
 
 
@@ -283,13 +310,24 @@ int main()
 	}
 
 	cl_kernel kernel = clCreateKernel(program, "render", &status);
+	printf("kernal status: %i\n", status);
 
 	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
+	printf("set arg 0 status: %i\n", status);
 	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clShapes);
+	printf("set arg 1 status: %i\n", status);
 	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clVerts);
+	printf("set arg 2 status: %i\n", status);
 	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clMaterials);
+	printf("set arg 3 status: %i\n", status);
 	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	printf("set arg 4 status: %i\n", status);
 	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg 5 status: %i\n ", status);
+	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	printf("set arg 4 status: %i\n", status);
+	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg 5 status: %i\n ", status);
 
 	//v this is the number of items to do, so like framex and framey?
 	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
@@ -310,8 +348,6 @@ int main()
 
 
 
-
-
 	Shader shader("vert.glsl", "frag.glsl");
 	shader.use();
 
@@ -320,6 +356,7 @@ int main()
 
 	mt19937_64 numGen;
 	randomBuffer = new uint64_t[frameX * frameY]();
+
 	for (size_t i = 0; i < frameX * frameY; i++) {
 		randomBuffer[i] = numGen();
 		//printf("random buffer %i: %zu\n", i, randomBuffer[i]);
@@ -332,54 +369,38 @@ int main()
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 2u, 0u));//checkers
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.6f, 0.6f, 0.6f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(5.6f, 5.6f, 5.6f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54, 0.95f, 0.0f, 0.0f, 0u, 0u));//transparenty
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f, 0u, 0u));//mirrorA
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.05f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.00100f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red 
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 6.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//blue light
 
 
 	vector<UShape> shapes;
 	shapes.reserve(MAX_SHAPES);
 
-	shapes.push_back(makeSphere(fvec4(0.0f, 8.0f, 0.0f, 0.0f), 5.0f, 1u));//light
+	shapes.push_back(makeSphere(fvec4(6.7f, 0.0f, 0.0f, 0.0f), 1.0f, 5u));//light
+	shapes.push_back(makeSphere(fvec4(-5.0f, 0.0f, 0.0f, 0.0f), 1.0f, 6u));//light
 
-	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//smal
+	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 19.9f, 4u));//fog
 
-	//spheres.push_back(Sphere(fvec4(3.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 3u, 0), 3.0f));//transparent
-	//spheres.push_back(Sphere(fvec4(0.0f, 5.0f, 5.0f, 0.0f), Shape(AABB(), 2u, 0), 3.0f));//mirror
-
-	//spheres.push_back(Sphere(fvec4(0.0f, 3.0f, 0.0f, 0.0f), Shape(AABB(), 4u, 0), 3.0f));//foggy sphere
-	//spheres.push_back(Sphere(fvec4(3.6f, 1.5f, 0.0f, 0.0f), Shape(AABB(), 5u, 0), 0.5f));//red light
+	shapes.push_back(makeSphere(fvec4(-12.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//small ball
 
 
 
-
-	//vector<Triangle> triangles;
-	//triangles.reserve(MAX_TRIANGLES);
 
 	vector<Vertex> vertices;
 	vertices.reserve(MAX_SHAPES * 3);
 
-	/*
-	vertices.push_back(Vertex(fvec4(-10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(10, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(10, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
-	vertices.push_back(Vertex(fvec4(-10, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));*/
 
 	vertices.push_back(Vertex(fvec4(-5, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
 	vertices.push_back(Vertex(fvec4(15, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
 	vertices.push_back(Vertex(fvec4(15, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
 	vertices.push_back(Vertex(fvec4(-5, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
 
-	shapes.push_back(makeTriangle(0, 3, 2, 0u));
-	shapes.push_back(makeTriangle(0, 2, 1, 0u));
-
-	//triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 3, 2));
-	//triangles.push_back(Triangle(Shape(AABB(), 0u, 1), 0, 2, 1));
-
-
-
+	//shapes.push_back(makeTriangle(0, 3, 2, 0u));
+	//shapes.push_back(makeTriangle(0, 2, 1, 0u));
 
 
 
@@ -390,21 +411,43 @@ int main()
 	uint32_t fps = 30;
 
 
-	cl_event* waitAfterWrites = new cl_event[3];
+	cl_event* waitAfterWrites = new cl_event[5];
 
 	AABB sceneBounding = redoAABBs(shapes, vertices);
 
 
 
+	OtherData otherData = {
+		clearColor,
+		fps,
+		MAX_PATH,
+		uint(shapes.size()),
+		MONTE_CARLO_SAMPLES
+	};
 
 	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
+	printf("write 0 status: %i\n", status);
+
 	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_SHAPES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
+	printf("write 1 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
+	printf("write 2 status: %i\n", status);
 	cl_event* waitAfterFinalWrite = new cl_event;
-	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 3, waitAfterWrites, waitAfterFinalWrite);
+	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[3]);
+	printf("write 3 status: %i\n", status);
+	status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[4]);
+	printf("write 4 status: %i\n", status);
+
+
+
+	clWaitForEvents(5, waitAfterWrites);
+
+
+
 
 	cl_event* otherDataEvent = new cl_event;
 	cl_event* waitAfterProcessing = new cl_event;
+
 
 #if defined(OUTPUTFRAMES)|| defined(OUTPUTPASSES)
 
@@ -422,7 +465,7 @@ int main()
 
 #ifdef OUTPUTFRAMES
 	for (; frameCounter < OUTPUTFRAMES;) {
-	double currentFrame = double(frameCounter) / double(fps);
+		double currentFrame = double(frameCounter) / double(fps);
 
 
 
@@ -460,51 +503,29 @@ int main()
 			printf("fps: %f\n", sum / 30.0f);
 		}
 		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
-		frameTimes[frameCounter % 30] = 1.0f / float(deltaTime);
 
 
 
 
-		constexpr double mypi = glm::pi<double>();
+
+		status = clSetKernelArg(kernel, 6, sizeof(cl_uint), &frameCounter);
+		printf("set arg 6 status: %i\n ", status);
+
+		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
+		printf("range kernel: %i\n", status);
 
 
-		//fvec3 eye = fvec3(sin(currentFrame) * 16, 4, cos(currentFrame) * 16);
 
-		fvec3 eye = fvec3(0.0f, 5.0f, 6.0f);
-		fvec3 lookat = fvec3(0.0, 0.0, 0.0);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glDrawBuffer(GL_BACK);
 
-		fvec3 camForward = glm::normalize(lookat - eye);
-		fvec3 camUp = glm::normalize(fvec3(0.0, 1, 0.0));
-		fvec3 camRight = glm::cross(camForward, camUp);
-		camUp = glm::cross(camRight, camForward);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, frameFBO);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
 
-		float viewPortHeight = 2.0f;
-		float viewPortWidth = viewPortHeight * frameRatio;
+		glBlitFramebuffer(0, 0, frameX, frameY, 0, 0, frameX, frameY, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-		float fov = 120;
-		float focal = (viewPortHeight / 2.0) / glm::tan(radians(fov / 2.0));
-
-
-		sceneBounding = redoAABBs(shapes, vertices);
-		OtherData otherData = { 
-			clearColor, 
-			fvec4(eye, 0.0f), 
-			fvec4(camRight, 0.0f),
-			fvec4(camUp, 0.0f),
-			fvec4(camForward, 0.0),
-			focal,
-			currentFrame,
-			MAX_PATH,
-			uint(shapes.size()),
-			MONTE_CARLO_SAMPLES
-		};
-
-		status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 1, waitAfterFinalWrite, otherDataEvent);
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 1, otherDataEvent, waitAfterProcessing);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
+
 		processInput(window);
 		glfwPollEvents();
 
