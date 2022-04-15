@@ -2,11 +2,18 @@
 #define SHARED_STRUCTS_H
 
 
-enum shapeType {
-	SPHERE = 0,
-	TRIANGLE
+// enum shapeType {
+// 	SPHERE = 0,
+// 	TRIANGLE
 
 
+// };
+
+
+
+union atomFloat{
+    float f;
+    int i;
 };
 
 #ifdef CPP
@@ -16,12 +23,6 @@ enum shapeType {
     typedef struct alignas(16) OtherData {
         
 	    float4 clearColor;
-        //float4 eye;
-        //float4 camRight;
-        //float4 camUp;
-        //float4 camForward;
-        //float focal;
-        //float currentTime;
         uint fps;
         uint maxDepth;
         uint numberOfShapes;
@@ -53,34 +54,24 @@ enum shapeType {
         uint type;
     } UShape;
 
-    typedef struct alignas(16) Shape {
-        AABB boundingBox;
-        uint matIdx;
-        uint type;
-        
-    }  Shape;
 
-    // typedef struct alignas(16) Sphere {
-    //     float4 origin;
-    //     Shape shape;
-    //     float radius;
-
-        
-    // } Sphere;
-
-    typedef struct Vertex{
+    typedef struct alignas(16) Vertex{
         float4 position;
         float4 normal;
         float4 uv;
     } Vertex;
 
-    // typedef struct Triangle{
-    //     Shape shape;
-    //     uint vertA;
-    //     uint vertB;
-    //     uint vertC;
-    // }Triangle;
+    typedef struct alignas(16) onionRGB {
+            union atomFloat r;
+            union atomFloat g;
+            union atomFloat b;
 
+    } onionRGB;
+
+    typedef struct alignas(16) ToneMapStruct{
+        struct onionRGB minLum;
+        struct onionRGB maxLum;
+    }ToneMapStruct;
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -97,6 +88,8 @@ enum shapeType {
     
     
 
+
+
     typedef struct rayAABBResult {
         float3 enter;
         float3 exit;
@@ -105,16 +98,9 @@ enum shapeType {
     } rayAABBResult;
 
 
-
     typedef struct OtherData {
         
 	    float4 clearColor;
-        //float4 eye;
-        //float4 camRight;
-        //float4 camUp;
-        //float4 camForward;
-        //float focal;
-        //float currentTime;
         uint fps;
         uint maxDepth;
         uint numberOfShapes;
@@ -163,20 +149,7 @@ enum shapeType {
         uint matIdx;
         uint type;
     } UShape;
-    typedef struct Shape {
-        AABB boundingBox;
-        uint matIdx;
-        uint type;
-        
-    } Shape;
-
-    // typedef struct Sphere {
-    //     float4 origin;
-    //     Shape shape;
-    //     float radius;
-
-        
-    // } Sphere;
+ 
 
     typedef struct Vertex{
         float4 position;
@@ -184,12 +157,21 @@ enum shapeType {
         float4 uv;
     } Vertex;
 
-    // typedef struct Triangle{
-    //     Shape shape;
-    //     uint vertA;
-    //     uint vertB;
-    //     uint vertC;
-    // }Triangle;
+    typedef struct onionRGB {
+            union atomFloat r;
+            union atomFloat g;
+            union atomFloat b;
+
+    } onionRGB;
+
+
+    typedef struct ToneMapStruct{
+        struct onionRGB minLum;
+        struct onionRGB maxLum;
+
+    }ToneMapStruct;
+
+
 #endif
 
 

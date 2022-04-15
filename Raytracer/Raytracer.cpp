@@ -252,6 +252,8 @@ int main()
 	printf("create buffer 3 status: %i\n", status);
 	cl_mem clRandomBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, frameX * frameY * sizeof(uint64_t), NULL, &status);
 	printf("create buffer 4 status: %i\n", status);
+	cl_mem clToneMapData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(ToneMapStruct), NULL, &status);
+	printf("create buffer 4 status: %i\n", status);
 
 
 
@@ -309,25 +311,38 @@ int main()
 		exit(-1);
 	}
 
-	cl_kernel kernel = clCreateKernel(program, "render", &status);
+	cl_kernel raytraceKernel = clCreateKernel(program, "render", &status);
 	printf("kernal status: %i\n", status);
 
-	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clOtherData);
+	status = clSetKernelArg(raytraceKernel, 0, sizeof(cl_mem), &clOtherData);
 	printf("set arg 0 status: %i\n", status);
-	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &clShapes);
+	status = clSetKernelArg(raytraceKernel, 1, sizeof(cl_mem), &clShapes);
 	printf("set arg 1 status: %i\n", status);
-	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clVerts);
+	status = clSetKernelArg(raytraceKernel, 2, sizeof(cl_mem), &clVerts);
 	printf("set arg 2 status: %i\n", status);
-	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clMaterials);
+	status = clSetKernelArg(raytraceKernel, 3, sizeof(cl_mem), &clMaterials);
 	printf("set arg 3 status: %i\n", status);
-	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
+	status = clSetKernelArg(raytraceKernel, 4, sizeof(cl_mem), &clRandomBuffer);
 	printf("set arg 4 status: %i\n", status);
-	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
-	printf("set arg 5 status: %i\n ", status);
-	status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clRandomBuffer);
-	printf("set arg 4 status: %i\n", status);
-	status = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clFrameTexture);
-	printf("set arg 5 status: %i\n ", status);
+	status = clSetKernelArg(raytraceKernel, 5, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg 5 status: %i\n", status);
+	status = clSetKernelArg(raytraceKernel, 6, sizeof(cl_mem), &clToneMapData);
+	printf("set arg 6 status: %i\n", status);
+	 
+
+
+	cl_kernel tonemapKernel = clCreateKernel(program, "toneMap", &status);
+	printf("kernal status: %i\n", status);
+
+	status = clSetKernelArg(tonemapKernel, 0, sizeof(cl_mem), &clOtherData);
+	printf("set arg2 0 status: %i\n", status);
+	status = clSetKernelArg(tonemapKernel, 1, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg2 1 status: %i\n ", status);
+	status = clSetKernelArg(tonemapKernel, 2, sizeof(cl_mem), &clToneMapData);
+	printf("set arg2 2 status: %i\n", status);
+
+
+
 
 	//v this is the number of items to do, so like framex and framey?
 	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
@@ -411,7 +426,7 @@ int main()
 	uint32_t fps = 30;
 
 
-	cl_event* waitAfterWrites = new cl_event[5];
+	cl_event* waitAfterWrites = new cl_event[6];
 
 	AABB sceneBounding = redoAABBs(shapes, vertices);
 
@@ -425,22 +440,29 @@ int main()
 		MONTE_CARLO_SAMPLES
 	};
 
-	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(Shape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
-	printf("write 0 status: %i\n", status);
+	ToneMapStruct toneMapData = {
+		{0, 0, 0}, {10000, 10000, 10000}
 
+	};
+
+	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(UShape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
+	printf("write 0 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_SHAPES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
 	printf("write 1 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
 	printf("write 2 status: %i\n", status);
-	cl_event* waitAfterFinalWrite = new cl_event;
 	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[3]);
 	printf("write 3 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[4]);
 	printf("write 4 status: %i\n", status);
+	status = clEnqueueWriteBuffer(cmdQueue, clToneMapData, CL_FALSE, 0, sizeof(ToneMapStruct), &toneMapData, 0, NULL, &waitAfterWrites[5]);
+	printf("write 4 status: %i\n", status);
 
 
 
-	clWaitForEvents(5, waitAfterWrites);
+
+
+	clWaitForEvents(6, waitAfterWrites);
 
 
 
@@ -508,12 +530,17 @@ int main()
 
 
 
-		status = clSetKernelArg(kernel, 6, sizeof(cl_uint), &frameCounter);
-		printf("set arg 6 status: %i\n ", status);
+		status = clSetKernelArg(raytraceKernel, 7, sizeof(cl_uint), &frameCounter);
+		printf("set arg 7 status: %i\n", status);
 
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
+		cl_event* firstPassEvent = new cl_event();
+
+		status = clEnqueueNDRangeKernel(cmdQueue, raytraceKernel, 2, NULL, globalWorkSize, NULL, 0, NULL, firstPassEvent);
 		printf("range kernel: %i\n", status);
 
+
+		status = clEnqueueNDRangeKernel(cmdQueue, tonemapKernel, 2, NULL, globalWorkSize, NULL, 1, firstPassEvent, NULL);
+		printf("range kernel: %i\n", status);
 
 
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);

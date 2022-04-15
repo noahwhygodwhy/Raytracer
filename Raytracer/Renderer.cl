@@ -191,9 +191,8 @@ __kernel void render(
     __global const Material* materials,
     __global ulong* randomBuffer,
     read_write image2d_t outBuffer,
-    const uint frameCounter,
-    volatile __global float3* minLum,
-    volatile __global float3* maxLum
+    __global ToneMapStruct* toneMapInfo,
+    const uint frameCounter
     //__global float2* minMax
     )  {
 
@@ -411,42 +410,54 @@ __kernel void render(
     float4 result = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
     //if(pixelX == 500 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
     write_imagef(outBuffer, (int2) (pixelX, pixelY), result);
-    atomicMin_g_f(minLum, result.xyz);
-    atomicMax_g_f(maxLum, result.xyz);
+
+    struct onionRGB onionResults;
+    onionResults.r.f = result.r;
+    onionResults.g.f = result.g;
+    onionResults.b.f = result.b;
+
+    atomic_min(&(toneMapInfo->minLum.r.i), onionResults.r.i);
+    atomic_min(&(toneMapInfo->minLum.g.i), onionResults.g.i);
+    atomic_min(&(toneMapInfo->minLum.b.i), onionResults.b.i);
+
+
+    union atomFloat* x = &((&(toneMapInfo->maxLum))->r);
+
+    atomic_max(&((&(toneMapInfo->maxLum))->r).i, onionResults.r.i);
+    atomic_max(&((&(toneMapInfo->maxLum))->g).i, onionResults.g.i);
+    atomic_max(&((&(toneMapInfo->maxLum))->b).i, onionResults.b.i);
+    
+
+    
+    // atomic_min(&(toneMapInfo->minLum.r.i), onionResults.r.i);
+    // atomic_min(&(toneMapInfo->minLum.g.i)+1, onionResults.g.i);
+    // atomic_min(&(toneMapInfo->minLum.b.i)+2, onionResults.b.i);
+
+
+    // onionRGB* x = (&(toneMapInfo->maxLum))->r.i;
+
+    // atomic_max(&(toneMapInfo->maxLum)r.i), onionResults.r.i);
+    // atomic_max(&(toneMapInfo->maxLum.g.i)+1, onionResults.g.i);
+    // atomic_max(&(toneMapInfo->maxLum.b.i)+2, onionResults.b.i);
+
     randomBuffer[pixelIdx] = state;
 }
 
 __kernel void toneMap(
     __global const OtherData* otherData,
-    __global const UShape* shapes,
-    __global const Vertex* vertices,
-    __global const Material* materials,
-    __global ulong* randomBuffer,
     read_write image2d_t outBuffer,
-    const uint frameCounter,
-    volatile __global float3* minLum,
-    volatile __global float3* maxLum
-    //__global float2* minMax
+    __global ToneMapStruct* toneMapInfo
     )  {
 
 
-         float currentFrame = ((float)frameCounter)/(float)otherData->fps;
 
     int frameX = get_global_size(0);
     int frameY = get_global_size(1);
+    
 
     float frameRatio = (float)frameX/(float)frameY;
 
-    float3 eye = (float3)(sin(currentFrame) * 20, 4, cos(currentFrame) * 20);
-
     //fvec3 eye = fvec3(0.0f, 0.0f, 20.0f);
-    float3 lookat = (float3)(0.0, 0.0, 0.0);
-
-    float3 camForward = normalize(lookat - eye);
-    float3 camUp = normalize((float3)(0.0, 1, 0.0));
-    float3 camRight = cross(camForward, camUp);
-    camUp = cross(camRight, camForward);
-
     float viewPortHeight = 2.0f;
     float viewPortWidth = viewPortHeight * frameRatio;
 
@@ -463,7 +474,17 @@ __kernel void toneMap(
     int pixelIdx = pixelX+(frameX*pixelY);
     if(pixelIdx == 0){
 
-        printf("min: %f, max: %f\n", *minLum, *maxLum);
+        printf("min: %f, %f, %f, max: %f, %f, %f\n",
+        
+         toneMapInfo->minLum.r.f,
+         toneMapInfo->minLum.g.f,
+         toneMapInfo->minLum.b.f,
+         toneMapInfo->maxLum.r.f,
+         toneMapInfo->maxLum.g.f,
+         toneMapInfo->maxLum.b.f
+         
+         
+         );
     }
     }
 
