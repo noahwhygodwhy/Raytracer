@@ -14,14 +14,13 @@ using namespace glm;
 #define MAX_SHAPES 1000
 #define MAX_MATERIALS 10
 
-#define MAX_PATH 300u
-//#define OUTPUTPASSES 50
-#define OUTPUTFRAMES 189
+#define MAX_PATH 200u
+#define OUTPUTFRAMES 1//89
 //#define EVERYFRAME INFINITY
 //#define CONCURRENT_FOR
 //#define KDTRACE
 //#define CIN
-//#define PPCIN
+
 
 #define PIXEL_MULTISAMPLE_N 1
 #define MONTE_CARLO_SAMPLES 100
@@ -37,9 +36,9 @@ uint32_t frameY = 1200;
 double frameRatio = double(frameX) / double(frameY);
 
 
-//fvec4 clearColor(0.21, 0.78, 0.95, 1.0);
+fvec4 clearColor(0.21, 0.78, 0.95, 1.0);
 
-fvec4 clearColor(0.0, 0.0, 0.0, 1.0);
+//fvec4 clearColor(0.0, 0.0, 0.0, 1.0);
 
 double deltaTime = 0.0f;	// Time between current frame and last frame
 double lastFrame = 0.0f; // Time of last frame
@@ -150,18 +149,26 @@ UShape makeTriangle(uint a, uint b, uint c, uint materialIdx) {
 
 
 
+
+
+
+
+
+
+
+
 int main()
 {
 	srand(0u);
 
-	glfwInit();
 
+
+//INITIALIZE OPENGL STUFF
+	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_SRGB_CAPABLE, 1);
 	glfwWindowHint(GLFW_SAMPLES, 16);
-
 	GLFWwindow* window = glfwCreateWindow(GLsizei(frameX), GLsizei(frameY), "Renderer", NULL, NULL);
 	if (window == NULL)
 	{
@@ -177,18 +184,8 @@ int main()
 	}
 	frameBufferSizeCallback(window, frameX, frameY);
 
-	glEnable(GL_FRAMEBUFFER_SRGB);
 
-
-	//unsigned int VBO, VAO;
-	//glGenVertexArrays(1, &VAO);
-	//glGenBuffers(1, &VBO);
-	//glBindVertexArray(VAO);
-	//glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	//glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f);
-
-
-
+//initialize opencl devices
 	cl_uint numPlatforms;
 	cl_int status = clGetPlatformIDs(0, NULL, &numPlatforms);
 	if (status != CL_SUCCESS)
@@ -201,35 +198,24 @@ int main()
 	cl_uint numDevices;
 	cl_device_id* devices;
 
-	
-
 	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
-
 	devices = new cl_device_id[numDevices];
 	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
-
 	cl_device_type type;
 	size_t sizes[3] = { 0, 0, 0 };
 	clGetDeviceInfo(devices[0], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
-	
 	cl_device_id device = devices[0];
-
-
 	char* ui;
 	size_t valueSize;
 	clGetDeviceInfo(device, CL_DEVICE_VERSION, sizeof(ui), &ui, NULL);
-
 	clGetDeviceInfo(device, CL_DEVICE_VERSION, 0, NULL, &valueSize);
 	ui = (char*)malloc(valueSize);
 	clGetDeviceInfo(device, CL_DEVICE_VERSION, valueSize, ui, NULL);
 	printf(" %d.%d Hardware version: %s\n", 1, 1, ui);
 	free(ui);
 
-	//printf("%c\n", ui);
-	//exit(0);
 
-
-
+//Set up opencl memory
 	cl_context_properties properties[] = {
 		CL_GL_CONTEXT_KHR, (cl_context_properties)glfwGetWGLContext(window),
 		CL_WGL_HDC_KHR, (cl_context_properties)GetDC(glfwGetWin32Window(window)),
@@ -259,7 +245,7 @@ int main()
 
 
 
-
+//Set up opengl buffer to be drawn to by opencl
 	GLuint frameFBO;
 	glGenFramebuffers(1, &frameFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, frameFBO);
@@ -269,11 +255,10 @@ int main()
 	glBindTexture(GL_TEXTURE_2D, frameTexture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, frameX, frameY, 0, GL_RGBA, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTexture, 0);
-
 
 	cl_mem clFrameTexture = clCreateFromGLTexture(context, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, frameTexture, &status);
 	printf("create buffer 5 status: %i\n", status);
@@ -282,7 +267,7 @@ int main()
 
 
 
-
+//read in opencl program and compile
 	long unsigned int length;
 	ifstream stream("Renderer.cl", ios::in | ios::ate | ios::binary);
 	//stream.seekg(0, ios::end);
@@ -311,6 +296,10 @@ int main()
 		exit(-1);
 	}
 
+
+
+
+//create the kernels and set memory arguments
 	cl_kernel raytraceKernel = clCreateKernel(program, "render", &status);
 	printf("kernal status: %i\n", status);
 
@@ -344,6 +333,8 @@ int main()
 
 
 
+
+//Documentation todo:
 	//v this is the number of items to do, so like framex and framey?
 	//size_t globalWorkSize[3] = { sizes[0], sizes[1], sizes[2]};
 
@@ -362,21 +353,17 @@ int main()
 
 
 
-
+//opengl shader
 	Shader shader("vert.glsl", "frag.glsl");
 	shader.use();
 
 
-
-
+//set up initial random buffer state cause gpu random is hard
 	mt19937_64 numGen;
 	randomBuffer = new uint64_t[frameX * frameY]();
-
 	for (size_t i = 0; i < frameX * frameY; i++) {
 		randomBuffer[i] = numGen();
-		//printf("random buffer %i: %zu\n", i, randomBuffer[i]);
 	}
-	//exit(0);
 	
 
 
@@ -384,23 +371,43 @@ int main()
 	vector<Material> materials;
 	materials.reserve(MAX_MATERIALS);
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 2u, 0u));//checkers
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(5.6f, 5.6f, 5.6f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(5.0f, 5.0f, 5.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54, 0.95f, 0.0f, 0.0f, 0u, 0u));//transparenty
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f, 0u, 0u));//mirrorA
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.00100f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 1u));//Fog?
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0100f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 2u));//Fog?
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red 
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 6.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//blue light
+	materials.push_back(Material(fvec4(clearColor.xyz, 0.0f), fvec4(fvec3(clearColor.xyz)/**5.0f*/, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//environ light
 
 
 	vector<UShape> shapes;
 	shapes.reserve(MAX_SHAPES);
 
-	shapes.push_back(makeSphere(fvec4(6.7f, 0.0f, 0.0f, 0.0f), 1.0f, 5u));//light
-	shapes.push_back(makeSphere(fvec4(-5.0f, 0.0f, 0.0f, 0.0f), 1.0f, 6u));//light
+	//FOG SHAPES
+	//shapes.push_back(makeSphere(fvec4(6.7f, 0.0f, 0.0f, 0.0f), 1.0f, 5u));//light
+	//shapes.push_back(makeSphere(fvec4(-5.0f, 0.0f, 0.0f, 0.0f), 1.0f, 6u));//light
+	//shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 19.9f, 4u));//fog
+	//shapes.push_back(makeSphere(fvec4(-12.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//small ball
 
-	shapes.push_back(makeSphere(fvec4(0.0f, 0.0f, 0.0f, 0.0f), 19.9f, 4u));//fog
 
-	shapes.push_back(makeSphere(fvec4(-12.0f, 0.0f, 0.0f, 0.0f), 3.0f, 0u));//small ball
+
+
+	//shapes.push_back(makeSphere(fvec4(0.0, 7.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
+
+
+
+	shapes.push_back(makeSphere(fvec4(0.0, 5.0f, 0.0f, 0.0f), 5.0f, 3u));//reflective ball
+	shapes.push_back(makeSphere(fvec4(-7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 2u));//refractive ball
+	shapes.push_back(makeSphere(fvec4(7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 4u));//fog ball
+
+
+	//shapes.push_back(makeSphere(fvec4(0.0, 7.0f, 4.0f, 0.0f), 5.0f, 2u));//reflective ball
+	//shapes.push_back(makeSphere(fvec4(8.0, 7.0f, 4.0f, 0.0f), 5.0f, 4u));//fog ball
+	//shapes.push_back(makeSphere(fvec4(-8.0, 5.0f, 0.0f, 0.0f), 5.0f, 3u));//refractive ball
+
+	shapes.push_back(makeSphere(fvec4(0.0, 25.0f, 0.0f, 0.0f), 10.0f, 1u));//light ball
+	shapes.push_back(makeSphere(fvec4(0.0, 0.0f, 0.0f, 0.0f), 200.0f, 7u));//environment ball
+
 
 
 
@@ -409,13 +416,13 @@ int main()
 	vertices.reserve(MAX_SHAPES * 3);
 
 
-	vertices.push_back(Vertex(fvec4(-5, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(15, 0, -15, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
-	vertices.push_back(Vertex(fvec4(15, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
-	vertices.push_back(Vertex(fvec4(-5, 0, 15, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-15, 0, -30, 0), fvec4(0, 1, 0, 0), vec4(0, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(30, 0, -30, 0), fvec4(0, 1, 0, 0), vec4(1, 0, 0, 0)));
+	vertices.push_back(Vertex(fvec4(30, 0, 30, 0), fvec4(0, 1, 0, 0), vec4(1, 1, 0, 0)));
+	vertices.push_back(Vertex(fvec4(-15, 0, 30, 0), fvec4(0, 1, 0, 0), vec4(0, 1, 0, 0)));
 
-	//shapes.push_back(makeTriangle(0, 3, 2, 0u));
-	//shapes.push_back(makeTriangle(0, 2, 1, 0u));
+	shapes.push_back(makeTriangle(0, 3, 2, 0u));
+	shapes.push_back(makeTriangle(0, 2, 1, 0u));
 
 
 
@@ -424,7 +431,6 @@ int main()
 	int lastSecondFrameCount = -1;
 
 	uint32_t fps = 30;
-
 
 	cl_event* waitAfterWrites = new cl_event[6];
 
@@ -441,10 +447,11 @@ int main()
 	};
 
 	ToneMapStruct toneMapData = {
-		{0, 0, 0}, {10000, 10000, 10000}
+		{10000, 10000, 10000}, {0, 0, 0}, {0, 0, 0}
 
 	};
 
+	//write all the geometry data to gpu buffers
 	status = clEnqueueWriteBuffer(cmdQueue, clShapes, CL_FALSE, 0, sizeof(UShape) * MAX_SHAPES, shapes.data(), 0, NULL, &waitAfterWrites[0]);
 	printf("write 0 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clVerts, CL_FALSE, 0, sizeof(Vertex) * MAX_SHAPES * 3, vertices.data(), 0, NULL, &waitAfterWrites[1]);
@@ -507,11 +514,8 @@ int main()
 #endif
 
 #endif
+		//frame time and fps calculation
 		frameCounter++;
-
-
-
-		//currentTime = currentFrame;
 		deltaTime = currentFrame - lastFrame;
 		printf("that frame took %f seconds\n", deltaTime);
 		lastFrame = currentFrame;
@@ -529,20 +533,25 @@ int main()
 
 
 
-
+		//set the frame counter argument
 		status = clSetKernelArg(raytraceKernel, 7, sizeof(cl_uint), &frameCounter);
 		printf("set arg 7 status: %i\n", status);
 
-		cl_event* firstPassEvent = new cl_event();
 
+		//do the raytracing pass on gpu
+		cl_event* firstPassEvent = new cl_event();
 		status = clEnqueueNDRangeKernel(cmdQueue, raytraceKernel, 2, NULL, globalWorkSize, NULL, 0, NULL, firstPassEvent);
 		printf("range kernel: %i\n", status);
 
-
-		status = clEnqueueNDRangeKernel(cmdQueue, tonemapKernel, 2, NULL, globalWorkSize, NULL, 1, firstPassEvent, NULL);
+		//do the tonemapping pass on gpu
+		cl_event* toneMapEvent = new cl_event();
+		status = clEnqueueNDRangeKernel(cmdQueue, tonemapKernel, 2, NULL, globalWorkSize, NULL, 1, firstPassEvent, toneMapEvent);
 		printf("range kernel: %i\n", status);
 
+		clWaitForEvents(1, toneMapEvent);
 
+
+		//draw it to the glfw window
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glDrawBuffer(GL_BACK);
 
@@ -560,6 +569,7 @@ int main()
 
 #ifdef OUTPUTFRAMES
 		saveImage((std::to_string(frameCounter) + ".png"), window);
+
 #endif
 
 #ifdef CIN
@@ -568,7 +578,7 @@ int main()
 
 	}
 	//pool.stop();
-	std::printf("closing\n");
+	printf("closing\n");
 	
 	glfwTerminate();
 }

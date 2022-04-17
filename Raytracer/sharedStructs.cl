@@ -71,6 +71,7 @@ union atomFloat{
     typedef struct alignas(16) ToneMapStruct{
         struct onionRGB minLum;
         struct onionRGB maxLum;
+        struct onionRGB summedLogLum;
     }ToneMapStruct;
 
 
@@ -85,10 +86,6 @@ union atomFloat{
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 #else
-    
-    
-
-
 
     typedef struct rayAABBResult {
         float3 enter;
@@ -168,6 +165,7 @@ union atomFloat{
     typedef struct ToneMapStruct{
         struct onionRGB minLum;
         struct onionRGB maxLum;
+        struct onionRGB summedLogLum;
 
     }ToneMapStruct;
 

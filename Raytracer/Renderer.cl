@@ -10,42 +10,9 @@
 
 
 
-#define VOLUME_SAMPLE_DISTANCE 0.1f
+#define VOLUME_SAMPLE_DISTANCE 0.05f
 
 #define BIAS 1e-3f
-
-
-//stolen from https://streamhpc.com/blog/2016-02-09/atomic-operations-for-floats-in-opencl-improved/
- inline void atomicMax_g_f(volatile __global float3 *addr, float3 val)
-{
-union {
-unsigned int u32;
-float3 f32;
-} next, expected, current;
-current.f32 = *addr;
-do {
-expected.f32 = current.f32;
-next.f32 = max(expected.f32, val);
-current.u32 = atomic_cmpxchg( (volatile __global unsigned int *)addr,
-expected.u32, next.u32);
-} while( current.u32 != expected.u32 );
-}
-
- inline void atomicMin_g_f(volatile __global float3 *addr, float3 val)
-{
-union {
-unsigned int u32;
-float3 f32;
-} next, expected, current;
-current.f32 = *addr;
-do {
-expected.f32 = current.f32;
-next.f32 = min(expected.f32, val);
-current.u32 = atomic_cmpxchg( (volatile __global unsigned int *)addr,
-expected.u32, next.u32);
-} while( current.u32 != expected.u32 );
-}
-
 
 
 
@@ -191,7 +158,7 @@ __kernel void render(
     __global const Material* materials,
     __global ulong* randomBuffer,
     read_write image2d_t outBuffer,
-    __global ToneMapStruct* toneMapInfo,
+    __global volatile ToneMapStruct* toneMapInfo,
     const uint frameCounter
     //__global float2* minMax
     )  {
@@ -205,10 +172,10 @@ __kernel void render(
     int frameY = get_global_size(1);
 
     float frameRatio = (float)frameX/(float)frameY;
+    float3 eye;
+    eye = (float3)(sin(currentFrame) * 40, 12, cos(currentFrame) * 40);
 
-    float3 eye = (float3)(sin(currentFrame) * 20, 4, cos(currentFrame) * 20);
-
-    //fvec3 eye = fvec3(0.0f, 0.0f, 20.0f);
+    //eye = (float3)(0.0f, 7.0f, 40.0f);
     float3 lookat = (float3)(0.0, 0.0, 0.0);
 
     float3 camForward = normalize(lookat - eye);
@@ -219,7 +186,7 @@ __kernel void render(
     float viewPortHeight = 2.0f;
     float viewPortWidth = viewPortHeight * frameRatio;
 
-    float fov = 120;
+    float fov = 90.0f;
     float focal = (viewPortHeight / 2.0) / tan(radians(fov / 2.0));
 
 
@@ -230,7 +197,7 @@ __kernel void render(
 
 
     int pixelIdx = pixelX+(frameX*pixelY);
-
+    
 
 
     ulong state = randomBuffer[pixelIdx];
@@ -255,10 +222,10 @@ __kernel void render(
     Ray ray;
     Ray newRay;
 // 
-    ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - eye.xyz);
+    // ray.direction = (float3)normalize((coordOnScreen.xyz + (float3)(offsetX, offsetY, 0.0f) ) - eye.xyz);
 
-    ray.origin = eye.xyz;
-    newRay = ray;
+    // ray.origin = eye.xyz;
+    // newRay = ray;
 
 
     float ior = 1.0;
@@ -277,20 +244,25 @@ __kernel void render(
         float3 accumulated = (float3)(0.0f);
         float3 masked = (float3)(1.0f);
         bool insideFog = false;
+
         for(uint layer = 0; layer < otherData->maxDepth; layer++) {
 
+            if(false)printf("\nlayer %u\n", layer);
             ray = newRay;
             
             newHit = shootRay(ray, otherData->numberOfShapes, shapes, vertices);
             //if(pixelX == 500 && pixelY == 500)printf("hit: %i\n", (int)newHit.hit);
             //hit needsmat idx not shape idx
             if(!newHit.hit){
-                if(layer==0u){
+                if(false)printf("Didn't hit nuffin\n");
+                if(layer == 0u){
                     accumulated = masked*otherData->clearColor.xyz;
                 }
                 break;
 
             }
+            
+            if(false)printf("hit something\n");
             // frameBuffer[pixelIdx] = (float4)(1.0, 0.0, 1.0, 1.0);
             // return;
             //printf("there was a hit\n");
@@ -307,41 +279,95 @@ __kernel void render(
             Material mat = materials[newHit.matIdx];
 
 
-            float3 matColor = getColor(mat.color.xyz, newHit.uv.xy, mat.proceduralColor);
+            float3 matColor = getColor(mat.color.xyz, newHit.uv.xy, mat.proceduralColor, currentFrame);
 
-            if(mat.volumetricColor > 0u || insideFog){
-                if(entering && !insideFog){
-                    insideFog = true;
-                    //if(pixelX == 500 && pixelY == 500) printf("entering\n");
-                    newRay.origin = newHit.position + (-newHit.normal * BIAS);
-                    newRay.direction = ray.direction;
-                } else {
+
+
+
+
+
+
+
+            if(mat.volumetricColor > 0u && entering){
+                
+                if(false)printf("hit fog case 1\n");
+                insideFog = true;
+                //if(pixelX == 500 && pixelY == 500) printf("entering\n");
+                newRay.origin = newHit.position + (-newHit.normal * BIAS);
+                newRay.direction = ray.direction;
+            } 
+            else if(insideFog){
+                
+                if(false)printf("already inside fog\n");
+                newRay.origin = newHit.position+ (-newHit.normal * BIAS);
+                newRay.direction = ray.direction;
+                
+                if(false)printf("max stepper distance: %f\n", newHit.depth);
+                for(float stepper = 0.0f; stepper < newHit.depth; stepper+=VOLUME_SAMPLE_DISTANCE){
+                    if(false)printf("layer %u, stepper at %f\n", layer, stepper);
+
+                    float scatterDecider = rand(&state);
                     
-                    newRay.origin = newHit.position + (newHit.normal * BIAS);
-                    newRay.direction = ray.direction;
-                    //if(pixelX == 500 && pixelY == 500) printf("exiting, going to depth %f\n", newHit.depth);
-
-                    for(float stepper = 0.0f; stepper < newHit.depth; stepper+=VOLUME_SAMPLE_DISTANCE){
-
-                        float scatterDecider = rand(&state);
-                        //if(pixelX == 500 && pixelY == 500)printf("stepper: %f, colorw: %f, scatterDecider: %f\n", stepper, mat.color.w, scatterDecider);
-                        
-                        if(scatterDecider < mat.color.w) {
-                            //if(pixelX == 500 && pixelY == 500)printf("scattering\n");
-                            newRay.origin = ray.origin+(ray.direction*stepper) + (newHit.normal * BIAS);
-                            newRay.direction = randomSphericalVector(&state);
-                            break;
-                        }
+                    //if(scatterDecider < mat.color.w) {
+                    if(scatterDecider < getFogDensity(mat.volumetricColor, ray.origin+(ray.direction*stepper) + (newHit.normal * BIAS), currentFrame, mat.color.w)) {
+                        if(false)printf("scattering\n" );
+                        newRay.origin = ray.origin+(ray.direction*stepper) + (newHit.normal * BIAS);
+                        newRay.direction = randomSphericalVector(&state);
+                        break;
                     }
+                    
+                    newRay.origin = newHit.position+ (newHit.normal * BIAS);
+                    newRay.direction = ray.direction;
                     insideFog = false;
                 }
-
             }
+
+
+
+//TODO these three cases
+/*outside fog and entering
+inside fog but just bounding
+inside fog and exiting*/
+
+            // if(mat.volumetricColor > 0u || insideFog){
+            //     if(entering && !insideFog){
+            //         insideFog = true;
+            //         //if(pixelX == 500 && pixelY == 500) printf("entering\n");
+            //         newRay.origin = newHit.position + (-newHit.normal * BIAS);
+            //         newRay.direction = ray.direction;
+            //     } else {
+                    
+            //         newRay.origin = newHit.position + (newHit.normal * BIAS);
+            //         newRay.direction = ray.direction;
+            //         //if(pixelX == 500 && pixelY == 500) printf("exiting, going to depth %f\n", newHit.depth);
+
+            //         for(float stepper = 0.0f; stepper < newHit.depth; stepper+=VOLUME_SAMPLE_DISTANCE){
+
+            //             float scatterDecider = rand(&state);
+            //             //if(pixelX == 500 && pixelY == 500)printf("stepper: %f, colorw: %f, scatterDecider: %f\n", stepper, mat.color.w, scatterDecider);
+                        
+            //             if(scatterDecider < getFogDensity(mat.volumetricColor, newHit.position, currentFrame, mat.color.w)) {
+            //                 //if(pixelX == 500 && pixelY == 500)printf("scattering\n");
+            //                 newRay.origin = ray.origin+(ray.direction*stepper) + (newHit.normal * BIAS);
+            //                 newRay.direction = randomSphericalVector(&state);
+            //                 break;
+            //             }
+            //         }
+            //         insideFog = false;
+            //     }
+
+            // }
+
+
             else if (transparencyDecider < mat.trans) {
+                
+                if(false)printf("transparency\n");
                 newRay.direction = normalize(getRefractionRay(normalize(newHit.normal), normalize(ray.direction), mat.ni, entering));
                 newRay.origin = newHit.position + (newHit.normal * (entering ? -1.0f : 1.0f) * BIAS);
             }
             else {
+                
+                if(false)printf("not transparent\n");
                 newRay.origin = newHit.position + (newHit.normal * BIAS);
 
                 if (reflectanceDecider < mat.smooth) {
@@ -402,91 +428,129 @@ __kernel void render(
                 masked *= matColor;
                 masked*= (diff*kD)+(cT);  
             }
+            
+            
+
+            // if(mat.volumetricColor > 0u && !entering){
+                
+            //     if(pixelX == 600 || pixelY == 800)printf("leaving the fog?\n");
+            //     newRay.origin = newHit.position + (newHit.normal * BIAS);
+            //     newRay.direction = ray.direction;
+            //     insideFog = false;
+            // }
+            
         }
 
         monteAccum += accumulated;
     }
     //printf("on pixel %i\n", pixelIdx);
-    float4 result = (float4)((monteAccum)/(float)(otherData->numberOfSamples), 1.0f);
-    //if(pixelX == 500 || pixelY == 500) result = (float4)(1.0f, 0.0f, 1.0f, 1.0f);
-    write_imagef(outBuffer, (int2) (pixelX, pixelY), result);
+    float3 result = (monteAccum)/(float)(otherData->numberOfSamples);
+
+
+    
+    //if(pixelX == 600 || pixelY == 800) result = (float3)(1.0f, 0.0f, 1.0f);
+
+    write_imagef(outBuffer, (int2) (pixelX, pixelY),  (float4)(result, 1.0f));
 
     struct onionRGB onionResults;
-    onionResults.r.f = result.r;
-    onionResults.g.f = result.g;
-    onionResults.b.f = result.b;
-
+    onionResults.r.f = result.x;
+    onionResults.g.f = result.y;
+    onionResults.b.f = result.z;
+    
     atomic_min(&(toneMapInfo->minLum.r.i), onionResults.r.i);
     atomic_min(&(toneMapInfo->minLum.g.i), onionResults.g.i);
     atomic_min(&(toneMapInfo->minLum.b.i), onionResults.b.i);
 
-
-    union atomFloat* x = &((&(toneMapInfo->maxLum))->r);
-
-    atomic_max(&((&(toneMapInfo->maxLum))->r).i, onionResults.r.i);
-    atomic_max(&((&(toneMapInfo->maxLum))->g).i, onionResults.g.i);
-    atomic_max(&((&(toneMapInfo->maxLum))->b).i, onionResults.b.i);
+    atomic_max(&(toneMapInfo->maxLum.r.i), onionResults.r.i);
+    atomic_max(&(toneMapInfo->maxLum.g.i), onionResults.g.i);
+    atomic_max(&(toneMapInfo->maxLum.b.i), onionResults.b.i);
     
+    struct onionRGB logOnionResults;
 
+    float oneOverN = 1.0f/frameX*frameY;
+
+
+    float absoluteLum = 0.27*result.x + 0.67*result.y * 0.06 * result.z;
+
+
+    logOnionResults.r.f = log(0.0001+absoluteLum) * oneOverN;
+    logOnionResults.g.f = log(0.0001+absoluteLum) * oneOverN;
+    logOnionResults.b.f = log(0.0001+absoluteLum) * oneOverN;
     
-    // atomic_min(&(toneMapInfo->minLum.r.i), onionResults.r.i);
-    // atomic_min(&(toneMapInfo->minLum.g.i)+1, onionResults.g.i);
-    // atomic_min(&(toneMapInfo->minLum.b.i)+2, onionResults.b.i);
-
-
-    // onionRGB* x = (&(toneMapInfo->maxLum))->r.i;
-
-    // atomic_max(&(toneMapInfo->maxLum)r.i), onionResults.r.i);
-    // atomic_max(&(toneMapInfo->maxLum.g.i)+1, onionResults.g.i);
-    // atomic_max(&(toneMapInfo->maxLum.b.i)+2, onionResults.b.i);
+    atomic_add(&(toneMapInfo->summedLogLum.r.i), logOnionResults.r.i);
+    atomic_add(&(toneMapInfo->summedLogLum.g.i), logOnionResults.g.i);
+    atomic_add(&(toneMapInfo->summedLogLum.b.i), logOnionResults.b.i);
 
     randomBuffer[pixelIdx] = state;
 }
 
+
+
+
+
+
 __kernel void toneMap(
     __global const OtherData* otherData,
     read_write image2d_t outBuffer,
-    __global ToneMapStruct* toneMapInfo
+    __global volatile ToneMapStruct* toneMapInfo
     )  {
 
 
 
     int frameX = get_global_size(0);
     int frameY = get_global_size(1);
-    
-
-    float frameRatio = (float)frameX/(float)frameY;
-
-    //fvec3 eye = fvec3(0.0f, 0.0f, 20.0f);
-    float viewPortHeight = 2.0f;
-    float viewPortWidth = viewPortHeight * frameRatio;
-
-    float fov = 120;
-    float focal = (viewPortHeight / 2.0) / tan(radians(fov / 2.0));
-
 
     int pixelX = get_global_id(0);
     int pixelY = get_global_id(1);
 
     int sampleN = 0;//get_global_id(2);
 
-
     int pixelIdx = pixelX+(frameX*pixelY);
-    if(pixelIdx == 0){
 
-        printf("min: %f, %f, %f, max: %f, %f, %f\n",
-        
-         toneMapInfo->minLum.r.f,
-         toneMapInfo->minLum.g.f,
-         toneMapInfo->minLum.b.f,
-         toneMapInfo->maxLum.r.f,
-         toneMapInfo->maxLum.g.f,
-         toneMapInfo->maxLum.b.f
-         
-         
-         );
-    }
-    }
+
+
+
+//ward tone reproduction method
+    float3 maxes = (float3) (toneMapInfo->maxLum.r.f, toneMapInfo->maxLum.g.f, toneMapInfo->maxLum.b.f);
+    float3 logavg = exp((float3) (toneMapInfo->summedLogLum.r.f, toneMapInfo->summedLogLum.g.f, toneMapInfo->summedLogLum.b.f));
+    float3 pix = read_imagef(outBuffer, (int2) (pixelX, pixelY)).xyz;
+    float3 top = 1.219f +pow(maxes/2.0f, 0.4f);
+    float3 bot = 1.219f  +pow(logavg, 0.4f);
+    float3 result = pix * (1.0f/maxes)*pow(top/bot, 2.5f);
+
+
+//reinhard tone reproduction method
+
+
+    // float3 pix = read_imagef(outBuffer, (int2) (pixelX, pixelY)).xyz;
+
+    // float absoluteLum = 0.27*pix.x + 0.67*pix.y * 0.06 * pix.z;
+
+
+    // float LwLocal = exp(log(0.0001 + absoluteLum));
+
+
+
+    // float3 maxes = (float3) (toneMapInfo->maxLum.r.f, toneMapInfo->maxLum.g.f, toneMapInfo->maxLum.b.f);
+    // float3 LwTotal = exp((float3)(toneMapInfo->summedLogLum.r.f, toneMapInfo->summedLogLum.g.f, toneMapInfo->summedLogLum.b.f));
+    // float a = 0.18f;
+    // float3 scaled = (a/LwTotal)*LwLocal;
+    // float3 reflectance = scaled/(1.0f+scaled);
+    // float3 result = reflectance*maxes;
+
+
+    // if(pixelIdx == 0){
+
+    //     printf("maxes: %f, %f, %f, maxes 2: %f, logavg: %f,%f,%f, logavg2: %f", maxes.x, maxes.y, maxes.z, maxes2, logavg.x, logavg.y, logavg.z, logavg2);
+
+    // }
+
+    //result = pix;
+
+    result = pow(result, (float3)(1.0f/2.2f));//gamma correction for sRGB
+    write_imagef(outBuffer, (int2) (pixelX, pixelY), (float4)(result, 1.0f));
+
+}
 
 
 //slide 25 https://web.engr.oregonstate.edu/~mjb/cs575/Handouts/opencl.2pp.pdf
