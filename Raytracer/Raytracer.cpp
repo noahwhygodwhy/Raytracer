@@ -15,15 +15,15 @@ using namespace glm;
 #define MAX_MATERIALS 10
 
 #define MAX_PATH 200u
-#define OUTPUTFRAMES 1//89
-//#define EVERYFRAME INFINITY
+//#define OUTPUTFRAMES 1//89
+#define EVERYFRAME INFINITY
 //#define CONCURRENT_FOR
 //#define KDTRACE
-//#define CIN
+#define CIN
 
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 100
+#define MONTE_CARLO_SAMPLES 10
 
 
 //#define BASIC_BITCH
@@ -31,8 +31,8 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
-uint32_t frameX = 1200;
-uint32_t frameY = 1200;
+uint32_t frameX = 800;
+uint32_t frameY = 800;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -327,8 +327,10 @@ int main()
 	printf("set arg2 0 status: %i\n", status);
 	status = clSetKernelArg(tonemapKernel, 1, sizeof(cl_mem), &clFrameTexture);
 	printf("set arg2 1 status: %i\n ", status);
-	status = clSetKernelArg(tonemapKernel, 2, sizeof(cl_mem), &clToneMapData);
-	printf("set arg2 2 status: %i\n", status);
+	status = clSetKernelArg(tonemapKernel, 2, sizeof(cl_mem), &clFrameTexture);
+	printf("set arg2 2 status: %i\n ", status);
+	status = clSetKernelArg(tonemapKernel, 3, sizeof(cl_mem), &clToneMapData);
+	printf("set arg2 3 status: %i\n", status);
 
 
 
@@ -377,7 +379,7 @@ int main()
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0100f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 2u));//Fog?
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red 
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 6.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//blue light
-	materials.push_back(Material(fvec4(clearColor.xyz, 0.0f), fvec4(fvec3(clearColor.xyz)/**5.0f*/, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//environ light
+	materials.push_back(Material(fvec4(clearColor.xyz, 0.0f), fvec4(fvec3(clearColor.xyz)/*5.0f*/, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//environ light
 
 
 	vector<UShape> shapes;

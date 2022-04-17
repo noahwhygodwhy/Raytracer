@@ -157,7 +157,7 @@ __kernel void render(
     __global const Vertex* vertices,
     __global const Material* materials,
     __global ulong* randomBuffer,
-    read_write image2d_t outBuffer,
+    write_only image2d_t outBuffer,
     __global volatile ToneMapStruct* toneMapInfo,
     const uint frameCounter
     //__global float2* minMax
@@ -491,7 +491,8 @@ inside fog and exiting*/
 
 __kernel void toneMap(
     __global const OtherData* otherData,
-    read_write image2d_t outBuffer,
+    read_only image2d_t inBuffer,
+    write_only image2d_t outBuffer,
     __global volatile ToneMapStruct* toneMapInfo
     )  {
 
@@ -513,7 +514,7 @@ __kernel void toneMap(
 //ward tone reproduction method
     float3 maxes = (float3) (toneMapInfo->maxLum.r.f, toneMapInfo->maxLum.g.f, toneMapInfo->maxLum.b.f);
     float3 logavg = exp((float3) (toneMapInfo->summedLogLum.r.f, toneMapInfo->summedLogLum.g.f, toneMapInfo->summedLogLum.b.f));
-    float3 pix = read_imagef(outBuffer, (int2) (pixelX, pixelY)).xyz;
+    float3 pix = read_imagef(inBuffer, (int2) (pixelX, pixelY)).xyz;
     float3 top = 1.219f +pow(maxes/2.0f, 0.4f);
     float3 bot = 1.219f  +pow(logavg, 0.4f);
     float3 result = pix * (1.0f/maxes)*pow(top/bot, 2.5f);
