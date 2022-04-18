@@ -30,6 +30,7 @@ union atomFloat{
     }  OtherData;
 
 
+
     typedef struct alignas(16) Material {
         float4 color;
         float4 emission;
@@ -47,11 +48,21 @@ union atomFloat{
         float4 max; 
     }  AABB;
 
+    typedef struct alignas(16) GKDNode
+    {
+        AABB area;
+        float value;
+        int greater;
+        int lesser;
+        int axis;
+    } GKDNode;
+
     typedef struct alignas(16) UShape{
         float4 values;
         AABB boundingBox;
         uint matIdx;
         uint type;
+        int next;
     } UShape;
 
 
@@ -139,12 +150,21 @@ union atomFloat{
         float4 max; 
     } AABB;
 
+    typedef struct GKDNode
+    {
+        AABB area;
+        float value;
+        int greater;
+        int lesser;
+        int axis;
+    } GKDNode;
 
     typedef struct UShape{
         float4 values;
         AABB boundingBox;
         uint matIdx;
         uint type;
+        int next;
     } UShape;
  
 
