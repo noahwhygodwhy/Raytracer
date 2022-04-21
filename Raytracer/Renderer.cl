@@ -10,7 +10,7 @@
 
 
 
-#define VOLUME_SAMPLE_DISTANCE 0.05f
+#define VOLUME_SAMPLE_DISTANCE 0.01f
 
 #define BIAS 1e-3f
 
@@ -173,10 +173,11 @@ __kernel void render(
 
     float frameRatio = (float)frameX/(float)frameY;
     float3 eye;
-    eye = (float3)(sin(currentFrame) * 40, 12, cos(currentFrame) * 40);
+    //eye = (float3)(sin(currentFrame) * 40, 12, cos(currentFrame) * 40);
 
-    //eye = (float3)(0.0f, 7.0f, 40.0f);
-    float3 lookat = (float3)(0.0, 0.0, 0.0);
+    eye = (float3)(15.0f, 7.0f, 15.0f);
+    //eye = (float3)(0.0f, 7.0f, 30.0f);
+    float3 lookat = (float3)(0.0, 5.0, 0.0);
 
     float3 camForward = normalize(lookat - eye);
     float3 camUp = normalize((float3)(0.0, 1, 0.0));

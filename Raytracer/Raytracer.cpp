@@ -15,15 +15,15 @@ using namespace glm;
 #define MAX_MATERIALS 10
 
 #define MAX_PATH 200u
-//#define OUTPUTFRAMES 1//89
+#define OUTPUTFRAMES 1024
 #define EVERYFRAME INFINITY
 //#define CONCURRENT_FOR
 //#define KDTRACE
-#define CIN
+//#define CIN
 
 
 #define PIXEL_MULTISAMPLE_N 1
-#define MONTE_CARLO_SAMPLES 10
+#define MONTE_CARLO_SAMPLES 200
 
 
 //#define BASIC_BITCH
@@ -31,9 +31,8 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
-uint x; 
-uint32_t frameX = 800;
-uint32_t frameY = 800;
+uint32_t frameX = 400;
+uint32_t frameY = 400;
 double frameRatio = double(frameX) / double(frameY);
 
 
@@ -377,7 +376,7 @@ int main()
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(5.0f, 5.0f, 5.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//white light
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.54, 0.95f, 0.0f, 0.0f, 0u, 0u));//transparenty
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.9f, 0.9f, 0u, 0u));//mirrorA
-	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0100f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 2u));//Fog?
+	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0030f), fvec4(0.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 3u));//Fog?
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(6.0f, 0.0f, 0.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//red 
 	materials.push_back(Material(fvec4(1.0f, 1.0f, 1.0f, 0.0f), fvec4(0.0f, 0.0f, 6.0f, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//blue light
 	materials.push_back(Material(fvec4(clearColor.xyz, 0.0f), fvec4(fvec3(clearColor.xyz)/*5.0f*/, 0.0f), 10.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0u, 0u));//environ light
@@ -396,13 +395,15 @@ int main()
 
 
 	//shapes.push_back(makeSphere(fvec4(0.0, 7.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
+	shapes.push_back(makeSphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
 
 
 
-	shapes.push_back(makeSphere(fvec4(0.0, 5.0f, 0.0f, 0.0f), 5.0f, 3u));//reflective ball
-	shapes.push_back(makeSphere(fvec4(-7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 2u));//refractive ball
-	shapes.push_back(makeSphere(fvec4(7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 4u));//fog ball
+	//shapes.push_back(makeSphere(fvec4(0.0, 5.0f, 0.0f, 0.0f), 5.0f, 3u));//reflective ball
+	//shapes.push_back(makeSphere(fvec4(-7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 2u));//refractive ball
+	//shapes.push_back(makeSphere(fvec4(7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 4u));//fog ball
 
+	//shapes.push_back(makeSphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
 
 	//shapes.push_back(makeSphere(fvec4(0.0, 7.0f, 4.0f, 0.0f), 5.0f, 2u));//reflective ball
 	//shapes.push_back(makeSphere(fvec4(8.0, 7.0f, 4.0f, 0.0f), 5.0f, 4u));//fog ball
@@ -433,9 +434,9 @@ int main()
 	float frameTimes[30](0);
 	int lastSecondFrameCount = -1;
 
-	uint32_t fps = 30;
+	uint32_t fps = 12;
 
-	cl_event* waitAfterWrites = new cl_event[6];
+	cl_event* waitAfterWrites = new cl_event[5];
 
 	AABB sceneBounding = redoAABBs(shapes, vertices);
 
@@ -461,18 +462,16 @@ int main()
 	printf("write 1 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clRandomBuffer, CL_FALSE, 0, sizeof(uint64_t) * frameX * frameY, randomBuffer, 0, NULL, &waitAfterWrites[2]);
 	printf("write 2 status: %i\n", status);
-	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_TRUE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[3]);
+	status = clEnqueueWriteBuffer(cmdQueue, clMaterials, CL_FALSE, 0, sizeof(Material) * MAX_MATERIALS, materials.data(), 0, NULL, &waitAfterWrites[3]);
 	printf("write 3 status: %i\n", status);
 	status = clEnqueueWriteBuffer(cmdQueue, clOtherData, CL_FALSE, 0, sizeof(OtherData), &otherData, 0, NULL, &waitAfterWrites[4]);
 	printf("write 4 status: %i\n", status);
-	status = clEnqueueWriteBuffer(cmdQueue, clToneMapData, CL_FALSE, 0, sizeof(ToneMapStruct), &toneMapData, 0, NULL, &waitAfterWrites[5]);
-	printf("write 4 status: %i\n", status);
 
 
 
 
 
-	clWaitForEvents(6, waitAfterWrites);
+	clWaitForEvents(5, waitAfterWrites);
 
 
 
@@ -536,22 +535,26 @@ int main()
 
 
 
+
 		//set the frame counter argument
 		status = clSetKernelArg(raytraceKernel, 7, sizeof(cl_uint), &frameCounter);
 		printf("set arg 7 status: %i\n", status);
+		
+		status = clEnqueueWriteBuffer(cmdQueue, clToneMapData, CL_TRUE, 0, sizeof(ToneMapStruct), &toneMapData, 0, NULL,NULL);
+		printf("write tonemap status: %i\n", status);
 
 
 		//do the raytracing pass on gpu
 		cl_event* firstPassEvent = new cl_event();
 		status = clEnqueueNDRangeKernel(cmdQueue, raytraceKernel, 2, NULL, globalWorkSize, NULL, 0, NULL, firstPassEvent);
 		printf("range kernel: %i\n", status);
-
+			
 		//do the tonemapping pass on gpu
-		cl_event* toneMapEvent = new cl_event();
+		/*cl_event* toneMapEvent = new cl_event();
 		status = clEnqueueNDRangeKernel(cmdQueue, tonemapKernel, 2, NULL, globalWorkSize, NULL, 1, firstPassEvent, toneMapEvent);
 		printf("range kernel: %i\n", status);
 
-		clWaitForEvents(1, toneMapEvent);
+		clWaitForEvents(1, toneMapEvent);*/
 
 
 		//draw it to the glfw window
