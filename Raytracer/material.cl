@@ -40,21 +40,36 @@ float3 getColor(float3 colorIn, float2 uv, float swc, float currentFrame) {
 }
 
 float getFogDensity(float swc, float3 hitPos, float currentFrame, float originalDensity){
+
+    float3 tempSphereOrigin = (float3)(7.5f, 6.0f, 7.5f);
+
+
+    float sphereRad = 4.0f;
+
     switch((int)floor(swc)){
-        case 2:
-
-            //return originalDensity*fabs(hitPos.y/10.0f);
-
+       
+        case 3:{
+        
+            //return originalDensity;
+            //return originalDensity;
+            float wave1 = (sin(sin(hitPos.x) + (hitPos.y*cos(hitPos.z)) + currentFrame)+1.0f)/2.0f;
+            float wave2 = 1.0f;
+            float wave3 = 1.0f;
+            //float wave1 = sin((hitPos.y*sin(((hitPos.z*hitPos.x)+currentFrame)*3.0f/sphereRad+currentFrame)+currentFrame)*5.0f/sphereRad)+0.1f;
+            //float wave2 = sin((hitPos.z*sin(((hitPos.y)+currentFrame)*5.0f/sphereRad+currentFrame)+currentFrame)*3.0f/sphereRad)+0.2f;
+            //float wave3 = cos((hitPos.z*cos(((hitPos.y)+currentFrame)*5.0f/sphereRad+currentFrame)+currentFrame)*3.0f/sphereRad)+0.2f;
+            return wave1*originalDensity;
+        }
+        case 2:{
+            
             if(fmod(((floor(hitPos.x/3.0f))+ (floor(hitPos.y/3.0f))+(floor(hitPos.z/3.0f))),2) == 0){
                 return 0;
             }
             return originalDensity;
-        break;
-        case 0://continue
-        case 1://continue
-        default:
+        }
+        default:{
             return originalDensity;
-        break;
+        }
     }
 }
 
