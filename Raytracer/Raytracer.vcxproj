@@ -147,6 +147,7 @@
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="Raytracer.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="test.cpp" />
     <ClCompile Include="Texture.cpp" />
   </ItemGroup>
   <ItemGroup>

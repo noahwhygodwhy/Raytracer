@@ -31,6 +31,7 @@ using namespace glm;
 
 bool prd = false; //print debuging for refraction
 
+uint x; 
 uint32_t frameX = 800;
 uint32_t frameY = 800;
 double frameRatio = double(frameX) / double(frameY);

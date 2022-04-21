@@ -11,15 +11,19 @@
 
 
 
-union atomFloat{
-    float f;
-    int i;
-};
-
 #ifdef CPP
 
-    
+   
+    #include <cstdint>
+    #include <glm/glm.hpp>
+    using namespace glm;
+    typedef vec4 float4;
 
+
+    union atomFloat{
+        float f;
+        int i;
+    };
     typedef struct alignas(16) OtherData {
         
 	    float4 clearColor;
@@ -98,6 +102,11 @@ union atomFloat{
 /////////////////////////////////////////////////////////////////////////////
 #else
 
+
+    union atomFloat{
+        float f;
+        int i;
+    };
     typedef struct rayAABBResult {
         float3 enter;
         float3 exit;
