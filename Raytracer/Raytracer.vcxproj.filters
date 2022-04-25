@@ -16,31 +16,22 @@
     <Filter Include="Header Files\external">
       <UniqueIdentifier>{5a47e564-3287-47a7-9ab1-ee4e73e2e049}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Material">
-      <UniqueIdentifier>{addd475e-edea-4310-ae5c-e7e73b18f174}</UniqueIdentifier>
-    </Filter>
     <Filter Include="OpenCL">
       <UniqueIdentifier>{b276145d-abbe-4115-83c6-174e1d1802f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\external">
+      <UniqueIdentifier>{565a1142-6450-4b1d-8b92-30b32cb1d3a6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raytracer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="glad.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>Source Files\Material</Filter>
-    </ClCompile>
-    <ClCompile Include="KDTree.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="test.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="glad.c">
+      <Filter>Source Files\external</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -54,12 +45,33 @@
     <None Include="Renderer.cl">
       <Filter>OpenCL</Filter>
     </None>
+    <None Include="cookTorance.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="helpers.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="material.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="rand.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="shape.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="sharedStructs.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="sphere.cl">
+      <Filter>OpenCL</Filter>
+    </None>
+    <None Include="triangle.cl">
+      <Filter>OpenCL</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="KDTree.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="glad.h">
@@ -75,7 +87,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="opencl.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\external</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="readme.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

@@ -15,10 +15,8 @@ using namespace glm;
 #define MAX_MATERIALS 10
 
 #define MAX_PATH 200u
-#define OUTPUTFRAMES 1024
+//#define OUTPUTFRAMES 1
 #define EVERYFRAME INFINITY
-//#define CONCURRENT_FOR
-//#define KDTRACE
 //#define CIN
 
 
@@ -143,18 +141,6 @@ UShape makeSphere(fvec3 origin, float radius, uint materialIdx) {
 UShape makeTriangle(uint a, uint b, uint c, uint materialIdx) {
 	return UShape(fvec4(a, b, c, 0), AABB(), materialIdx, 1u);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 int main()
@@ -395,13 +381,13 @@ int main()
 
 
 	//shapes.push_back(makeSphere(fvec4(0.0, 7.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
-	shapes.push_back(makeSphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
+	//shapes.push_back(makeSphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
 
 
 
-	//shapes.push_back(makeSphere(fvec4(0.0, 5.0f, 0.0f, 0.0f), 5.0f, 3u));//reflective ball
-	//shapes.push_back(makeSphere(fvec4(-7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 2u));//refractive ball
-	//shapes.push_back(makeSphere(fvec4(7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 4u));//fog ball
+	shapes.push_back(makeSphere(fvec4(0.0, 5.0f, 0.0f, 0.0f), 5.0f, 3u));//reflective ball
+	shapes.push_back(makeSphere(fvec4(-7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 2u));//refractive ball
+	shapes.push_back(makeSphere(fvec4(7.5f, 6.0f, 7.5f, 0.0f), 5.0f, 4u));//fog ball
 
 	//shapes.push_back(makeSphere(fvec4(0.0f, 6.0f, 0.0f, 0.0f), 5.0f, 4u));//fog ball
 
@@ -480,7 +466,7 @@ int main()
 	cl_event* waitAfterProcessing = new cl_event;
 
 
-#if defined(OUTPUTFRAMES)|| defined(OUTPUTPASSES)
+#ifdef OUTPUTFRAMES
 
 	time_t now;
 	time(&now);
@@ -500,9 +486,6 @@ int main()
 
 
 
-#endif
-#ifdef OUTPUTPASSES
-		{
 #endif
 #else
 
@@ -549,7 +532,7 @@ int main()
 		status = clEnqueueNDRangeKernel(cmdQueue, raytraceKernel, 2, NULL, globalWorkSize, NULL, 0, NULL, firstPassEvent);
 		printf("range kernel: %i\n", status);
 			
-		//do the tonemapping pass on gpu
+		//do the tonemapping pass on gpu, weird bug, doesn't work for more than one frame, probably something with buffering the min/max luminance at the begining of each frame I did wrong
 		/*cl_event* toneMapEvent = new cl_event();
 		status = clEnqueueNDRangeKernel(cmdQueue, tonemapKernel, 2, NULL, globalWorkSize, NULL, 1, firstPassEvent, toneMapEvent);
 		printf("range kernel: %i\n", status);

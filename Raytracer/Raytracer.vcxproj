@@ -144,31 +144,37 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="glad.c" />
-    <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="Raytracer.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="test.cpp" />
-    <ClCompile Include="Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cookTorance.cl" />
     <None Include="frag.glsl" />
+    <None Include="helpers.cl" />
+    <None Include="material.cl" />
     <None Include="packages.config" />
+    <None Include="rand.cl" />
     <None Include="Renderer.cl" />
+    <None Include="shape.cl" />
+    <None Include="sharedStructs.cl" />
+    <None Include="sphere.cl" />
+    <None Include="triangle.cl" />
     <None Include="vert.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="opencl.hpp" />
     <ClInclude Include="Raytracer.hpp" />
     <ClInclude Include="glad.h" />
-    <ClInclude Include="KDTree.hpp" />
     <ClInclude Include="Shader.hpp" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_write.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="readme.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\glfw.3.3.6\build\native\glfw.targets" Condition="Exists('..\packages\glfw.3.3.6\build\native\glfw.targets')" />
-    <Import Project="..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets" Condition="Exists('..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets')" />
     <Import Project="..\packages\glm.0.9.9.800\build\native\glm.targets" Condition="Exists('..\packages\glm.0.9.9.800\build\native\glm.targets')" />
     <Import Project="..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets" Condition="Exists('..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets')" />
   </ImportGroup>
@@ -177,7 +183,6 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\glfw.3.3.6\build\native\glfw.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\glfw.3.3.6\build\native\glfw.targets'))" />
-    <Error Condition="!Exists('..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\AssimpCpp.5.0.1.6\build\native\AssimpCpp.targets'))" />
     <Error Condition="!Exists('..\packages\glm.0.9.9.800\build\native\glm.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\glm.0.9.9.800\build\native\glm.targets'))" />
     <Error Condition="!Exists('..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\opencl-nug.0.777.77\build\native\opencl-nug.targets'))" />
   </Target>
